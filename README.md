@@ -101,7 +101,7 @@ python opentinker/environment/gomoku/gomoku_server.py --port <env_port>
 
 ### 4. Run Training
 
-**Math RL (Single-turn):**
+**Math RL:**
 
 generate data:
 ```bash
