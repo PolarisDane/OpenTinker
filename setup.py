@@ -37,7 +37,9 @@ setup(
     description="OpenTinker: A distributedframework for training and inference with interactive environments",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="OpenTinker Team",
+    author="Siqi Zhu, Jiaxuan You",
+    author_email="siqizhu4@illinois.edu, jiaxuan@illinois.edu",
+    url="https://github.com/open-tinker/OpenTinker",
     python_requires=">=3.8",
     packages=find_packages(include=["opentinker", "opentinker.*"]),
     install_requires=[
