@@ -1,0 +1,2 @@
+- name: generic_agent
+  _target_: opentinker.server.generic_agent_loop.GenericAgentLoop
