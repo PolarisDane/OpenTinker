@@ -257,3 +257,9 @@ Multi-turn game environment where the model plays Gomoku against an opponent. It
   note         = {GitHub repository}
 }
 ```
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=open-tinker/OpenTinker&type=Date&from=2025-12-20)](https://star-history.com/#open-tinker/OpenTinker&Date&from=2025-12-20)
+
+
