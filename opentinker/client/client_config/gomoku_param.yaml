@@ -13,7 +13,7 @@ enable_tracing: true
 weave_project: null
 
 # WandB (optional)
-wandb_key: null
+wandb_key: 2ed6f8544ac3e30d5c08879166cc10d9c6232448
 
 
 # Model and tokenizer
@@ -43,9 +43,12 @@ max_prompt_tokens: 4096
 algorithm: "agent_loop"
 
 # RL Algorithm settings (passed to server via scheduler)
-# adv_estimator: "grpo" or "gae" (for PPO)
-adv_estimator: "grpo"
-# rollout_n: number of samples per prompt for GRPO (only used when adv_estimator=grpo)
+# adv_estimator options:
+#   - "grpo"          : Standard GRPO (outcome-only advantage)
+#   - "grpo_per_step" : Per-step GRPO with return-based advantages (for multi-turn tasks)
+#   - "gae"           : Generalized Advantage Estimation (for PPO, requires critic)
+adv_estimator: "grpo_per_step"
+# rollout_n: number of samples per prompt for GRPO/grpo_per_step (only used when adv_estimator=grpo or grpo_per_step)
 rollout_n: 16
 
 # Interaction configuration
