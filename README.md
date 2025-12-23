@@ -8,7 +8,8 @@
   <p>
     <a href="https://open-tinker.github.io/opentinker-page/">Project Page</a> ·
     <a href="https://wandb.ai/zsqzz/Open-Tinker?nw=nwuserzhusq20">W&B</a> ·
-    <a href="https://deepwiki.com/open-tinker/OpenTinker">DeepWiki</a>
+    <a href="https://deepwiki.com/open-tinker/OpenTinker">DeepWiki</a> ·
+    <a href="https://join.slack.com/t/opentinker/shared_invite/zt-3lnxuxkfr-QZpzObNvW0DtcQUWzvKtQg">Slack</a>
   </p>
 </div>
 
@@ -272,17 +273,6 @@ Multi-turn game environment where the model plays Gomoku against an opponent. It
 
 - [Scheduler & Dashboard Guide](opentinker/scheduler/SCHEDULER_GUIDE.md) - Configuration, Usage, and Web Dashboard
 
-## 🤝 Community
-
-<div align="center">
-
-  <p>
-    💬 <a href="https://join.slack.com/t/opentinker/shared_invite/zt-3lnxuxkfr-QZpzObNvW0DtcQUWzvKtQg">
-      OpenTinker Slack Workspace
-    </a>
-  </p>
-
-</div>
 
 
 ## 📖 Citation
