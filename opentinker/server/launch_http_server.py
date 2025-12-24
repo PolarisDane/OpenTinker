@@ -71,13 +71,14 @@ def main(cfg):
         cfg.actor_rollout_ref.rollout.name = "vllm"
         cfg.actor_rollout_ref.rollout.gpu_memory_utilization = 0.6
 
-        # GRPO 特定配置
-        if cfg.algorithm.adv_estimator == "grpo":
+        # GRPO/GRPO-per-step 特定配置
+        # grpo_per_step uses the same training framework as grpo, just with different advantage estimation
+        if cfg.algorithm.adv_estimator in ("grpo", "grpo_per_step"):
             # 从外部配置读取 rollout.n，默认为 4
             # 可以通过命令行参数覆盖: actor_rollout_ref.rollout.n=8
             rollout_n = cfg.actor_rollout_ref.rollout.get("n", 4)
             cfg.actor_rollout_ref.rollout.n = rollout_n
-            logger.info(f"🔧 GRPO mode: rollout.n = {rollout_n}")
+            logger.info(f"🔧 {adv_estimator} mode: rollout.n = {rollout_n}")
             
             cfg.actor_rollout_ref.actor.kl_loss_coef = 0.001
             cfg.actor_rollout_ref.actor.kl_loss_type = "low_var_kl"

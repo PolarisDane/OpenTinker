@@ -60,6 +60,7 @@ from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
 from opentinker.backend_patch.verl.trainer.ppo.reward import compute_reward, compute_reward_async
+from opentinker.backend_patch.verl.trainer.ppo.per_step_core_algos import compute_grpo_per_step_advantage
 
 
 @dataclass
@@ -236,6 +237,25 @@ def compute_advantage(
             token_level_rewards=data.batch["token_level_rewards"],
             response_mask=grpo_calculation_mask,
             index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == "grpo_per_step" or str(adv_estimator) == "grpo_per_step":
+        # GRPO with per-step (per-turn) credit assignment
+        # Uses cumulative returns from each turn for fine-grained advantage estimation
+        # Inspired by GTPO (arXiv:2511.17052)
+        
+        # Extract turn_scores from non_tensor_batch if available
+        turn_scores = data.non_tensor_batch.get("turn_scores", None)
+        
+        advantages, returns = compute_grpo_per_step_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            index=data.non_tensor_batch["uid"],
+            turn_scores=turn_scores,
+            gamma=gamma,
+            epsilon=1e-6,
             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
         )
         data.batch["advantages"] = advantages

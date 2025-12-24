@@ -957,11 +957,12 @@ class JobSchedulerActor:
         
         # Forward rollout.n ONLY for GRPO mode (PPO/GAE doesn't use rollout.n)
         rollout_n = job.config.get("rollout_n")
-        if adv_estimator == "grpo" and rollout_n:
+        # grpo_per_step also uses rollout.n for grouped sampling
+        if adv_estimator in ("grpo", "grpo_per_step") and rollout_n:
             cmd.append(f"actor_rollout_ref.rollout.n={rollout_n}")
-            logger.info(f"Job {job.job_id}: ✓ Forwarding rollout.n={rollout_n} (GRPO mode)")
-        elif adv_estimator == "grpo":
-            logger.warning(f"Job {job.job_id}: ⚠ GRPO mode but rollout_n not specified, using server default")
+            logger.info(f"Job {job.job_id}: ✓ Forwarding rollout.n={rollout_n} ({adv_estimator} mode)")
+        elif adv_estimator in ("grpo", "grpo_per_step"):
+            logger.warning(f"Job {job.job_id}: ⚠ {adv_estimator} mode but rollout_n not specified, using server default")
         elif rollout_n:
             logger.info(f"Job {job.job_id}: Ignoring rollout_n={rollout_n} (not in GRPO mode)")
         

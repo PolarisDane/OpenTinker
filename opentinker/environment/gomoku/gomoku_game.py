@@ -64,6 +64,8 @@ class GomokuGame(AbstractGame):
         board_size: int = 9,
         win_length: int = 5,
         max_total_steps: Optional[int] = None,
+        max_initial_moves: Optional[int] = None,
+        empty_board_prob: Optional[float] = None,
     ):
         """Initialize Gomoku game.
         
@@ -71,10 +73,15 @@ class GomokuGame(AbstractGame):
             board_size: Size of the board
             win_length: Number in a row to win
             max_total_steps: Maximum steps before timeout
+            max_initial_moves: Maximum initial moves to place before game starts
+            empty_board_prob: Probability of starting with an empty board
         """
         self.board_size = board_size
         self.win_length = min(win_length, board_size)
         self.max_total_steps = max_total_steps or self.DEFAULT_MAX_TOTAL_STEPS
+        # Use provided values or fall back to class defaults
+        self.max_initial_moves = max_initial_moves if max_initial_moves is not None else self.MAX_INITIAL_MOVES
+        self.empty_board_prob = empty_board_prob if empty_board_prob is not None else self.EMPTY_BOARD_PROB
         self._init_game_state()
     
     def _init_game_state(self):
@@ -265,11 +272,11 @@ class GomokuGame(AbstractGame):
         
         Returns a dict with 'initial_moves' that reset() will use.
         """
-        if random.random() < self.EMPTY_BOARD_PROB:
+        if random.random() < self.empty_board_prob:
             return {"initial_moves": []}
         
         # Generate random valid moves
-        num_moves = random.randint(0, self.MAX_INITIAL_MOVES)
+        num_moves = random.randint(0, self.max_initial_moves)
         if num_moves == 0:
             return {"initial_moves": []}
         

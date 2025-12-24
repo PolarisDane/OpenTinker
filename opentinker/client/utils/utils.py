@@ -126,7 +126,40 @@ def serialize_dataproto(data: DataProto) -> Dict[str, Any]:
                 "__shape__": list(t.shape),
                 "__data__": base64.b64encode(t.tobytes()).decode("utf-8"),
             }
+        # Handle PIL Images for VL models
+        elif hasattr(t, 'save') and hasattr(t, 'mode'):
+            # This is a PIL Image
+            import io
+            buffer = io.BytesIO()
+            # Convert to RGB if necessary (some formats like RGBA need conversion)
+            if hasattr(t, 'mode') and t.mode in ('RGBA', 'P', 'LA'):
+                t = t.convert('RGB')
+            t.save(buffer, format='PNG')
+            return {
+                "__type__": "PIL.Image",
+                "__mode__": t.mode,
+                "__size__": list(t.size),
+                "__data__": base64.b64encode(buffer.getvalue()).decode("utf-8"),
+            }
         return t
+
+    def deep_serialize(obj):
+        """Recursively serialize nested structures (dicts, lists) containing tensors/images."""
+        if isinstance(obj, dict):
+            return {k: deep_serialize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [deep_serialize(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return [deep_serialize(item) for item in obj]
+        elif isinstance(obj, torch.Tensor):
+            return serialize_tensor(obj)
+        elif isinstance(obj, np.ndarray) and obj.dtype != object:
+            return serialize_tensor(obj)
+        elif hasattr(obj, 'save') and hasattr(obj, 'mode'):
+            # PIL Image
+            return serialize_tensor(obj)
+        else:
+            return obj
 
     # Serialize batch (TensorDict)
     serialized_batch = {}
@@ -140,18 +173,19 @@ def serialize_dataproto(data: DataProto) -> Dict[str, Any]:
         if isinstance(v, np.ndarray):
             # For object dtype arrays, convert to list (preserving structure)
             if v.dtype == object:
-                # Convert to list, preserving dict/object structure
-                data_list = v.flatten().tolist()
+                # Recursively serialize any nested objects (dicts, lists, tensors, PIL Images)
+                data_list = [deep_serialize(item) for item in v.flatten()]
+                
                 serialized_non_tensor[k] = {
                     "__type__": "numpy.ndarray",
                     "__dtype__": "object",
                     "__shape__": list(v.shape),
-                    "__data__": data_list,  # Keep as-is (dicts, strings, etc.)
+                    "__data__": data_list,
                 }
             else:
                 serialized_non_tensor[k] = serialize_tensor(v)
         else:
-            serialized_non_tensor[k] = v
+            serialized_non_tensor[k] = deep_serialize(v)
 
     return {
         "batch": serialized_batch,
@@ -187,10 +221,15 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
 
         elif obj["__type__"] == "numpy.ndarray":
             if obj["__dtype__"] == "object":
-                # Reconstruct object array from list
+                # Reconstruct object array from list, recursively deserializing tensors
                 data_list = obj["__data__"]
+                deserialized_list = []
+                for item in data_list:
+                    # Recursively deserialize any nested tensors
+                    deserialized_list.append(deserialize_tensor(item))
+                
                 shape = tuple(obj["__shape__"])
-                array = np.array(data_list, dtype=object).reshape(shape)
+                array = np.array(deserialized_list, dtype=object).reshape(shape)
                 return array
             else:
                 dtype = np.dtype(obj["__dtype__"])
@@ -198,8 +237,30 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
                 data_bytes = base64.b64decode(obj["__data__"])
                 array = np.frombuffer(data_bytes, dtype=dtype).reshape(shape)
                 return array
+        
+        # Handle PIL Images for VL models
+        elif obj["__type__"] == "PIL.Image":
+            from PIL import Image
+            import io
+            data_bytes = base64.b64decode(obj["__data__"])
+            buffer = io.BytesIO(data_bytes)
+            return Image.open(buffer).copy()  # .copy() to detach from buffer
 
         return obj
+
+    def deep_deserialize(obj):
+        """Recursively deserialize nested structures (dicts, lists) containing serialized tensors/images."""
+        if isinstance(obj, dict):
+            if "__type__" in obj:
+                # This is a serialized object (Tensor, ndarray, or PIL.Image)
+                return deserialize_tensor(obj)
+            else:
+                # Regular dict, recursively deserialize values
+                return {k: deep_deserialize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [deep_deserialize(item) for item in obj]
+        else:
+            return obj
 
     # Deserialize batch
     tensors = {}
@@ -211,7 +272,7 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
     non_tensors = {}
     if "non_tensor_batch" in data_dict:
         for k, v in data_dict["non_tensor_batch"].items():
-            non_tensors[k] = deserialize_tensor(v)
+            non_tensors[k] = deep_deserialize(v)
 
     # Get meta_info
     meta_info = data_dict.get("meta_info", {})

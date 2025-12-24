@@ -8,7 +8,9 @@
   <p>
     <a href="https://open-tinker.github.io/opentinker-page/">Project Page</a> ·
     <a href="https://wandb.ai/zsqzz/Open-Tinker?nw=nwuserzhusq20">W&B</a> ·
-    <a href="https://deepwiki.com/open-tinker/OpenTinker">DeepWiki</a>
+    <a href="https://deepwiki.com/open-tinker/OpenTinker">DeepWiki</a> ·
+    <a href="https://join.slack.com/t/opentinker/shared_invite/zt-3lnxuxkfr-QZpzObNvW0DtcQUWzvKtQg">Slack</a> ·
+    <a href="https://raw.githubusercontent.com/open-tinker/Assets/ec4456791161a25ef8305d8bb37c8a27e9acb645/wechat_group.JPG">Wechat</a>
   </p>
 </div>
 
@@ -34,7 +36,7 @@
 
 #### Clone the Repository
 ```bash
-git clone --recurse-submodules git@github.com:open-tinker/OpenTinker.git
+git clone --recurse-submodules https://github.com/open-tinker/OpenTinker.git
 cd OpenTinker
 ```
 
@@ -272,17 +274,6 @@ Multi-turn game environment where the model plays Gomoku against an opponent. It
 
 - [Scheduler & Dashboard Guide](opentinker/scheduler/SCHEDULER_GUIDE.md) - Configuration, Usage, and Web Dashboard
 
-## 🤝 Community
-
-<div align="center">
-
-  <p>
-    💬 <a href="https://join.slack.com/t/opentinker/shared_invite/zt-3lnxuxkfr-QZpzObNvW0DtcQUWzvKtQg">
-      OpenTinker Slack Workspace
-    </a>
-  </p>
-
-</div>
 
 
 ## 📖 Citation

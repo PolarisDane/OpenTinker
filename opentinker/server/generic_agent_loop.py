@@ -41,6 +41,41 @@ logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
 
+def _deserialize_images(image_data):
+    """Deserialize PIL Images if they're still in serialized dict form.
+    
+    This handles the case where images arrive as {'__type__': 'PIL.Image', '__data__': base64...}
+    instead of actual PIL Image objects.
+    
+    Args:
+        image_data: List of images (either PIL Images or serialized dicts)
+        
+    Returns:
+        List of PIL Image objects
+    """
+    if not image_data:
+        return image_data
+    
+    from PIL import Image
+    import base64
+    import io
+    
+    result = []
+    for img in image_data:
+        if isinstance(img, dict) and img.get("__type__") == "PIL.Image":
+            # Deserialize from base64-encoded PNG
+            data_bytes = base64.b64decode(img["__data__"])
+            buffer = io.BytesIO(data_bytes)
+            result.append(Image.open(buffer).copy())
+        elif hasattr(img, 'save') and hasattr(img, 'mode'):
+            # Already a PIL Image
+            result.append(img)
+        else:
+            # Unknown type, keep as is
+            result.append(img)
+    return result
+
+
 class GenericAgentState(Enum):
     """States for the generic agent loop."""
     PENDING = "pending"          # Initial state, preparing the prompt
@@ -62,12 +97,16 @@ class GenericAgentData:
         request_id: str,
         interaction: Optional[BaseInteraction] = None,
         interaction_kwargs: Optional[dict[str, Any]] = None,
+        image_data: Optional[list[Any]] = None,
     ):
         self.messages = messages
         self.metrics = metrics
         self.request_id = request_id
         self.interaction = interaction
         self.interaction_kwargs = interaction_kwargs or {}
+        
+        # Multimodal data (images/videos for VL models)
+        self.image_data = image_data
 
         # Token sequences
         self.prompt_ids: list[int] = []
@@ -218,6 +257,29 @@ class GenericAgentLoop(AgentLoopBase):
         
         metrics = {}
         request_id = uuid4().hex
+        
+        # CRITICAL: Extract multimodal data (images) from kwargs for VL models
+        # This follows the verl pattern from single_turn_agent_loop.py
+        multi_modal_data_raw = kwargs.get("multi_modal_data")
+        print(f"[GenericAgentLoop DEBUG] multi_modal_data type: {type(multi_modal_data_raw)}, value: {multi_modal_data_raw!r:.200}")
+        
+        if isinstance(multi_modal_data_raw, dict):
+            image_data = copy.deepcopy(multi_modal_data_raw.get("image", None))
+        else:
+            image_data = None
+        
+        # Deserialize images if they're still in serialized dict form
+        # This handles cases where HTTP deserialization didn't fully complete
+        if image_data:
+            image_data = _deserialize_images(image_data)
+        
+        print(f"[GenericAgentLoop DEBUG] image_data type: {type(image_data)}, is_list: {isinstance(image_data, list)}")
+        if image_data:
+            print(f"[GenericAgentLoop DEBUG] image_data[0] type: {type(image_data[0]) if len(image_data) > 0 else 'empty'}")
+        
+        # Debug: Save images if SAVE_DEBUG_IMAGES is set
+        if image_data and os.environ.get("SAVE_DEBUG_IMAGES"):
+            await self._save_debug_images(image_data, request_id)
 
         # Initialize interaction if configured
         interaction = None
@@ -258,6 +320,7 @@ class GenericAgentLoop(AgentLoopBase):
             request_id=request_id,
             interaction=interaction,
             interaction_kwargs=interaction_kwargs,
+            image_data=image_data,
         )
 
         # breakpoint()
@@ -292,7 +355,7 @@ class GenericAgentLoop(AgentLoopBase):
             prompt_ids=prompt_ids,
             response_ids=response_ids[:self.response_length],
             response_mask=agent_data.response_mask[:self.response_length],
-            multi_modal_data={},
+            multi_modal_data={"image": agent_data.image_data} if agent_data.image_data else {},
             response_logprobs=agent_data.response_logprobs[:self.response_length] if agent_data.response_logprobs else None,
             num_turns=agent_data.user_turns + agent_data.assistant_turns + 1,
             metrics=agent_data.metrics,
@@ -334,7 +397,12 @@ class GenericAgentLoop(AgentLoopBase):
                     **self.apply_chat_template_kwargs,
                 ),
             )
-            model_inputs = self.processor(text=[raw_prompt], return_tensors="pt")
+            # CRITICAL: Pass images to processor for VL models
+            model_inputs = self.processor(
+                text=[raw_prompt], 
+                images=agent_data.image_data if agent_data.image_data else None,
+                return_tensors="pt"
+            )
             agent_data.prompt_ids = model_inputs.pop("input_ids").squeeze(0).tolist()
         else:
             agent_data.prompt_ids = await self.loop.run_in_executor(
@@ -359,11 +427,13 @@ class GenericAgentLoop(AgentLoopBase):
         print(f"[GenericAgentLoop DEBUG] _handle_generating_state START: request_id={agent_data.request_id}, prompt_len={len(agent_data.prompt_ids)}")
         start_time = time.time()
         with simple_timer("generate_sequences", agent_data.metrics):
-            print(f"[GenericAgentLoop DEBUG] Calling server_manager.generate()...")
+            print(f"[GenericAgentLoop DEBUG] Calling server_manager.generate() with image_data={agent_data.image_data is not None}...")
+            # CRITICAL: Pass image_data to vLLM for VL model inference
             output = await self.server_manager.generate(
                 request_id=agent_data.request_id,
                 prompt_ids=agent_data.prompt_ids,
                 sampling_params=sampling_params,
+                image_data=agent_data.image_data,
             )
             elapsed = time.time() - start_time
             print(f"[GenericAgentLoop DEBUG] server_manager.generate() COMPLETED in {elapsed:.2f}s, response_tokens={len(output.token_ids) if output else 0}")
@@ -483,6 +553,33 @@ class GenericAgentLoop(AgentLoopBase):
             return GenericAgentState.TERMINATED
         else:
             return GenericAgentState.GENERATING
+    
+    async def _save_debug_images(self, image_data: list, request_id: str):
+        """Save debug images to disk when SAVE_DEBUG_IMAGES env var is set.
+        
+        This helps verify that images are being correctly passed to the model.
+        Images are saved to the ROLLOUT_TRACE_DIR or /tmp/debug_images/ folder.
+        """
+        import os
+        from pathlib import Path
+        
+        output_dir = Path(os.environ.get("ROLLOUT_TRACE_DIR", "/tmp/debug_images"))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        for idx, img in enumerate(image_data):
+            try:
+                # Handle PIL Images
+                if hasattr(img, 'save'):
+                    img_path = output_dir / f"debug_image_{request_id[:8]}_{idx}.png"
+                    await self.loop.run_in_executor(
+                        None,
+                        lambda p=img_path, im=img: im.save(str(p))
+                    )
+                    print(f"[GenericAgentLoop DEBUG] Saved debug image to {img_path}")
+                else:
+                    print(f"[GenericAgentLoop DEBUG] Image {idx} is of type {type(img)}, cannot save")
+            except Exception as e:
+                print(f"[GenericAgentLoop DEBUG] Failed to save image {idx}: {e}")
 
     @classmethod
     def _initialize_interactions(cls, interaction_config_file):

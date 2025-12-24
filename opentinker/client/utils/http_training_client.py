@@ -30,6 +30,9 @@ from .utils import serialize_dataproto
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Suppress repetitive asyncio warnings about socket errors
+logging.getLogger("asyncio").setLevel(logging.ERROR)
+
 
 class HTTPTrainingClient:
 
