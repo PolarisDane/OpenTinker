@@ -39,14 +39,14 @@ val_batch_size: 8    # Reduced from 32 for VL model
 temperature: 1.0
 top_p: 1.0
 max_new_tokens: 4096     # Reduced from 4096
-max_prompt_tokens: 1024  # Max prompt length
+max_prompt_tokens: 4096  # Max prompt length including image tokens (VL: ~1000-5000 tokens per image)
 
 # Algorithm - agent_loop for multi-turn with GymEnvironmentInteraction
 algorithm: "agent_loop"
 
 # RL Algorithm settings (passed to server via scheduler)
 adv_estimator: "grpo"
-rollout_n: 4  # Reduced from 5 for VL model
+rollout_n: 16  # Reduced from 5 for VL model
 
 # Multi-turn configuration
 multi_turn:

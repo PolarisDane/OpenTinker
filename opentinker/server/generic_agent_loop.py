@@ -248,10 +248,14 @@ class GenericAgentLoop(AgentLoopBase):
             raise KeyError("raw_prompt is required in kwargs for agent loop")
         
         raw_prompt_value = kwargs["raw_prompt"]
+        # CRITICAL: Deep copy to prevent GRPO n-sample message accumulation bug!
+        # When GRPO samples the same prompt N times, each rollout MUST have its own
+        # independent messages list. Without deepcopy, all N rollouts share the same
+        # list reference, causing conversation history from all samples to accumulate.
         if isinstance(raw_prompt_value, list):
-            messages = raw_prompt_value
+            messages = copy.deepcopy(raw_prompt_value)
         elif isinstance(raw_prompt_value, dict):
-            messages = [raw_prompt_value]
+            messages = [copy.deepcopy(raw_prompt_value)]
         else:
             raise TypeError(f"raw_prompt must be a list or dict, got {type(raw_prompt_value)}")
         
@@ -424,6 +428,33 @@ class GenericAgentLoop(AgentLoopBase):
         The generated tokens are marked with mask=1 (included in loss computation).
         """
         import time
+        
+        # CONTEXT OVERFLOW PROTECTION: Check if we have enough room for generation
+        # This prevents the "max_tokens must be at least 1, got -X" error from vLLM
+        # which occurs when prompt_len exceeds max_model_len (especially for VL models
+        # where image tokens can be very large)
+        total_context_budget = self.prompt_length + self.response_length
+        min_generation_tokens = 16  # Minimum tokens needed for meaningful generation
+        
+        if len(agent_data.prompt_ids) + min_generation_tokens > total_context_budget:
+            logger.warning(
+                f"[GenericAgentLoop] Context overflow detected: prompt_len={len(agent_data.prompt_ids)}, "
+                f"total_budget={total_context_budget}. Terminating early to avoid negative max_tokens error."
+            )
+            print(
+                f"[GenericAgentLoop WARNING] Context overflow: prompt_len={len(agent_data.prompt_ids)} + "
+                f"min_gen={min_generation_tokens} > budget={total_context_budget}. Terminating early."
+            )
+            # Add a placeholder response if none exists yet (so we have valid output)
+            if not agent_data.response_ids:
+                # Add EOS token as minimal response
+                eos_token_id = self.tokenizer.eos_token_id
+                if eos_token_id is not None:
+                    agent_data.response_ids = [eos_token_id]
+                    agent_data.prompt_ids.append(eos_token_id)
+                    agent_data.response_mask.append(1)
+            return GenericAgentState.TERMINATED
+        
         print(f"[GenericAgentLoop DEBUG] _handle_generating_state START: request_id={agent_data.request_id}, prompt_len={len(agent_data.prompt_ids)}")
         start_time = time.time()
         with simple_timer("generate_sequences", agent_data.metrics):

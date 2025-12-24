@@ -102,6 +102,15 @@ class VLGameEnvironment(GameEnvironment):
             system_prompt=game_instance.get_system_prompt(),
         )
         
+        # Pre-filter overlong samples to prevent "max_tokens must be at least 1" vLLM error
+        # This is similar to verl's RLHFDataset.maybe_filter_out_long_prompts()
+        max_prompt_tokens = self.config.max_prompt_tokens
+        filter_stats = train_generator.filter_overlong_samples(
+            processor=processor,
+            max_prompt_length=max_prompt_tokens,
+        )
+        print(f"[VLGameEnvironment] Training data: {filter_stats['filtered_count']}/{filter_stats['original_count']} samples after filtering")
+        
         # Calculate virtual size for training
         batch_size = self.config.batch_size
         num_steps = getattr(self.config, 'num_steps', None)
@@ -151,6 +160,13 @@ class VLGameEnvironment(GameEnvironment):
                 seed=42,
                 system_prompt=game_instance.get_system_prompt(),
             )
+            
+            # Pre-filter validation data too
+            val_filter_stats = val_generator.filter_overlong_samples(
+                processor=processor,
+                max_prompt_length=max_prompt_tokens,
+            )
+            print(f"[VLGameEnvironment] Validation data: {val_filter_stats['filtered_count']}/{val_filter_stats['original_count']} samples after filtering")
             
             val_batch_size = getattr(self.config, 'val_batch_size', min(64, len(val_generator)))
             
