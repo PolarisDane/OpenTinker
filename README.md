@@ -1,12 +1,17 @@
-<h1 align="center">🔧 OpenTinker</h1>
+<div align="center" id="opentinker">
+  <img src="assets/reallogo.png" alt="logo" width="500"/>
 
-<h3 align="center">Democratizing Agentic Reinforcement Learning as a Service</h3>
+  <p style="margin-top: 6px; font-size: 18px;">
+    <em>Democratizing Agentic Reinforcement Learning as a Service</em>
+  </p>
 
-<p align="center">
-  <a href="https://open-tinker.github.io/opentinker-page/"><img src="https://img.shields.io/badge/🌐_Project_Page-blue?style=for-the-badge" alt="Project Page"/></a>
-  <a href="https://wandb.ai/zsqzz/Open-Tinker?nw=nwuserzhusq20"><img src="https://img.shields.io/badge/Weights_&_Biases-FFCC33?style=for-the-badge&logo=weights-and-biases&logoColor=black" alt="WandB"/></a>
-
-
+  <p>
+    <a href="https://open-tinker.github.io/opentinker-page/">Project Page</a> ·
+    <a href="https://wandb.ai/zsqzz/Open-Tinker?nw=nwuserzhusq20">W&B</a> ·
+    <a href="https://deepwiki.com/open-tinker/OpenTinker">DeepWiki</a> ·
+    <a href="https://join.slack.com/t/opentinker/shared_invite/zt-3lnxuxkfr-QZpzObNvW0DtcQUWzvKtQg">Slack</a>
+  </p>
+</div>
 
 
 ## 🌟 Key Features
@@ -30,7 +35,7 @@
 
 #### Clone the Repository
 ```bash
-git clone --recurse-submodules git@github.com:open-tinker/OpenTinker.git
+git clone --recurse-submodules https://github.com/open-tinker/OpenTinker.git
 cd OpenTinker
 ```
 
@@ -267,7 +272,6 @@ Multi-turn game environment where the model plays Gomoku against an opponent. It
 ## 📚 Documentation
 
 - [Scheduler & Dashboard Guide](opentinker/scheduler/SCHEDULER_GUIDE.md) - Configuration, Usage, and Web Dashboard
-
 
 
 
