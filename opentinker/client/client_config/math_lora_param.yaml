@@ -45,7 +45,7 @@ algorithm: "agent_loop"
 
 # RL Algorithm settings
 adv_estimator: "grpo"
-rollout_n: 16  # Reduced for LoRA to save memory
+rollout_n: 5  # Reduced for LoRA to save memory
 
 # LoRA configuration (ENABLED)
 # Reference: verl/examples/grpo_trainer/run_qwen2_5-3b_gsm8k_grpo_lora.sh
@@ -57,7 +57,7 @@ lora:
   lora_adapter_path: null
   # Learning rate for LoRA training (higher than full finetune)
   # Recommended: 5e-6 for 1.5B, 3e-6 for 3B, 1e-6 for 7B+
-  lr: 5e-6
+  lr: 3e-5
 
 # Interaction configuration
 interaction:
