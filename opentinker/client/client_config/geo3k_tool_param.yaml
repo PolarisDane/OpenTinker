@@ -25,34 +25,34 @@ data_path: ./data/geo3k_multiturn/train.parquet
 val_data_path: ./data/geo3k_multiturn/test.parquet
 
 # Training parameters
-batch_size: 4           # Reduced from 16 for VL model
+batch_size: 4 # Reduced from 16 for VL model
 num_workers: 0
-num_epochs: 5        # Total epochs
-num_steps: null      # Or set num_steps for step-based training
-save_freq: -1        # Save checkpoint every N steps
-test_freq: 5         # Validate every N steps
+num_epochs: 5 # Total epochs
+num_steps: null # Or set num_steps for step-based training
+save_freq: -1 # Save checkpoint every N steps
+test_freq: 5 # Validate every N steps
 
 # Validation parameters
-val_batch_size: 8    # Reduced from 32 for VL model
+val_batch_size: 8 # Reduced from 32 for VL model
 
 # Generation parameters
 temperature: 1.0
 top_p: 1.0
-max_new_tokens: 4096     # Reduced from 4096
-max_prompt_tokens: 4096  # Max prompt length including image tokens (VL: ~1000-5000 tokens per image)
+max_new_tokens: 4096 # Reduced from 4096
+max_prompt_tokens: 4096 # Max prompt length including image tokens (VL: ~1000-5000 tokens per image)
 
 # Algorithm - agent_loop for multi-turn with GymEnvironmentInteraction
 algorithm: "agent_loop"
 
 # RL Algorithm settings (passed to server via scheduler)
 adv_estimator: "grpo"
-rollout_n: 16  # Reduced from 5 for VL model
+rollout_n: 16 # Reduced from 5 for VL model
 
 # Multi-turn configuration
 multi_turn:
-  max_user_turns: 3         # Max environment responses (verification feedback)
-  max_assistant_turns: 4    # Max LLM responses (initial + refinements)
-  max_tokens_per_turn: 1024  # Per-turn response limit
+  max_user_turns: 3 # Max environment responses (verification feedback)
+  max_assistant_turns: 4 # Max LLM responses (initial + refinements)
+  max_tokens_per_turn: 1024 # Per-turn response limit
   weave_project: null
   experiment_name: "geo3k_multiturn"
 
@@ -64,11 +64,11 @@ interaction:
     env_host: 0.0.0.0
     env_port: 8088
     env_endpoint: http://${interaction.config.env_host}:${interaction.config.env_port}
-    max_steps: 3    # Max verification steps
+    max_steps: 3 # Max verification steps
 
 # Scheduler settings
 scheduler_url: "http://0.0.0.0:8780"
 scheduler_api_key: null
 
 # GPU settings
-num_gpus: 4  # Adjust based on your setup
+num_gpus: 4 # Adjust based on your setup

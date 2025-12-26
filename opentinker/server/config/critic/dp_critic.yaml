@@ -6,7 +6,6 @@
 
 # defaults specify the default config from each component
 defaults:
-
   # fsdp optimizer config
   - ../optim@optim: fsdp
 
@@ -27,7 +26,6 @@ strategy: fsdp
 
 # model config for the critic
 model:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.workers.config.FSDPCriticModelCfg
 

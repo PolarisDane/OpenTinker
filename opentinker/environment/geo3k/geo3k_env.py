@@ -7,18 +7,18 @@ from opentinker.environment.geo3k.geo3k_game import Geo3KGame
 
 class Geo3KGameEnvironment(VLGameEnvironment):
     """GameEnvironment for Geo3K geometry problems with vision-language models.
-    
+
     This environment uses:
     - VLGameEnvironment for multimodal data processing
     - StaticDatasetGeneratorVL for loading Geo3K parquet data with images
     - Geo3KGame for geometry problem logic
-    
+
     Args:
         config: Configuration object
         data_paths: Training data paths (parquet files)
         val_data_paths: Validation data paths (optional)
         job_id: Job identifier
-    
+
     Example:
         env = Geo3KGameEnvironment(
             config=config,
@@ -27,7 +27,7 @@ class Geo3KGameEnvironment(VLGameEnvironment):
             job_id="geo3k_training_001",
         )
     """
-    
+
     def __init__(self, config, data_paths, val_data_paths=None, job_id=None):
         # Initialize with Geo3K game and VL environment
         super().__init__(

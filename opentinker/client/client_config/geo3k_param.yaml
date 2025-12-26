@@ -18,7 +18,7 @@ wandb_key: 2ed6f8544ac3e30d5c08879166cc10d9c6232448
 # Model and processor paths
 # For VL models, both tokenizer_path and processor_path should point to the same model
 tokenizer_path: Qwen/Qwen2.5-VL-7B-Instruct
-processor_path: Qwen/Qwen2.5-VL-7B-Instruct  # AutoProcessor for VL models
+processor_path: Qwen/Qwen2.5-VL-7B-Instruct # AutoProcessor for VL models
 
 # Data paths - use Geo3K parquet files
 data_path: ./data/geo3k/train.parquet
@@ -27,19 +27,19 @@ val_data_path: ./data/geo3k/test.parquet
 # Training parameters
 batch_size: 16
 num_workers: 0
-num_epochs: 5       # Total epochs
-num_steps: null      # Or set num_steps for step-based training
-save_freq: -1        # Save checkpoint every N steps
-test_freq: 5         # Validate every N steps
+num_epochs: 5 # Total epochs
+num_steps: null # Or set num_steps for step-based training
+save_freq: -1 # Save checkpoint every N steps
+test_freq: 5 # Validate every N steps
 
 # Validation parameters
-val_batch_size: 32  # Total validation samples
+val_batch_size: 32 # Total validation samples
 
 # Generation parameters
 temperature: 1.0
 top_p: 1.0
-max_new_tokens: 2048     # Max tokens per response
-max_prompt_tokens: 1024  # Max prompt length (shorter for VL due to image tokens)
+max_new_tokens: 2048 # Max tokens per response
+max_prompt_tokens: 1024 # Max prompt length (shorter for VL due to image tokens)
 
 # Algorithm
 algorithm: "agent_loop"
@@ -47,7 +47,7 @@ algorithm: "agent_loop"
 # RL Algorithm settings
 # GRPO is recommended for VL tasks
 adv_estimator: "grpo"
-rollout_n: 5  # Number of samples per prompt for GRPO
+rollout_n: 5 # Number of samples per prompt for GRPO
 
 # Interaction configuration
 interaction:
@@ -57,7 +57,7 @@ interaction:
     env_host: 0.0.0.0
     env_port: 8088
     env_endpoint: http://${interaction.config.env_host}:${interaction.config.env_port}
-    max_steps: 1  # Single-turn geometry problem solving
+    max_steps: 1 # Single-turn geometry problem solving
 
 # Multi-turn settings (single-turn for Geo3K)
 multi_turn:
@@ -72,4 +72,4 @@ scheduler_url: "http://0.0.0.0:8780"
 scheduler_api_key: null
 
 # GPU settings
-num_gpus: 4  # Adjust based on your setup
+num_gpus: 4 # Adjust based on your setup

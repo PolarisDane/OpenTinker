@@ -33,8 +33,12 @@ class CheckpointConfig(BaseConfig):
         async_save (bool): Whether to save checkpoints asynchronously. Only implemented for Megatron as of now.
     """
 
-    save_contents: list[str] = field(default_factory=lambda: ["model", "optimizer", "extra"])
-    load_contents: list[str] = field(default_factory=lambda: ["model", "optimizer", "extra"])
+    save_contents: list[str] = field(
+        default_factory=lambda: ["model", "optimizer", "extra"]
+    )
+    load_contents: list[str] = field(
+        default_factory=lambda: ["model", "optimizer", "extra"]
+    )
     async_save: bool = False
 
 

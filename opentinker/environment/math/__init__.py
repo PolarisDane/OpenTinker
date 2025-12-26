@@ -9,4 +9,3 @@ from opentinker.environment.math.math_game import MathGame
 from opentinker.environment.math.math_tool_game import CodeInterpreterMathGame
 
 __all__ = ["MathGame", "CodeInterpreterMathGame"]
-

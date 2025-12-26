@@ -15,10 +15,8 @@ Example usage:
 import asyncio
 import hydra
 import logging
-import os
 import ray
 import signal
-import sys
 import uvicorn
 from pathlib import Path
 from omegaconf import DictConfig
@@ -56,7 +54,9 @@ def cleanup_scheduler():
                 else:
                     logger.warning("Ray not initialized. Skipping ray.kill on actor.")
             except Exception as e:
-                logger.warning(f"Failed to kill scheduler actor (it may already be dead): {e}")
+                logger.warning(
+                    f"Failed to kill scheduler actor (it may already be dead): {e}"
+                )
     except Exception as e:
         logger.error(f"Error during scheduler actor cleanup: {e}")
 
@@ -159,7 +159,9 @@ async def main_async(cfg: DictConfig):
         port_range = (int(cfg.port_range[0]), int(cfg.port_range[1]))
         logger.info(f"Using manual port range: {port_range}")
     else:
-        logger.info(f"Port range not specified, will auto-detect {num_ports} available ports")
+        logger.info(
+            f"Port range not specified, will auto-detect {num_ports} available ports"
+        )
 
     # Get paths
     base_dir = Path(__file__).parent.parent.parent.absolute()

@@ -16,12 +16,11 @@ wandb_key: ""
 nccl_p2p_disable: "1"
 enable_agent_loop: True
 tool_config_path: null
-job_id: null  # Set by scheduler for resource tracking
+job_id: null # Set by scheduler for resource tracking
 # model_path: /workspace/verl/HuggingFace-Download-Accelerator/hf_hub/models--Qwen--Qwen2.5-3B
 
 # specify the default per-component configs
 defaults:
-
   # <folder_name>@<field_name>.<field_name>: <yaml_file_name>
   # actor_rollout_ref.actor: trainer/config/actor/dp_actor.yaml
   - actor@actor_rollout_ref.actor: dp_actor
@@ -51,7 +50,6 @@ defaults:
 
 # config for actor, rollout and reference model
 actor_rollout_ref:
-
   # Whether it's a hybrid engine, currently only supports hybrid engine
   hybrid_engine: true
 
@@ -60,7 +58,6 @@ actor_rollout_ref:
 
   # Rollout model config.
   rollout:
-
     # for huge model, layered summon can save memory (prevent OOM) but make it slower
     layered_summon: False
 
@@ -80,7 +77,6 @@ custom_reward_function:
 
 # config for the algorithm
 algorithm:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.trainer.config.AlgoConfig
 
@@ -104,7 +100,6 @@ algorithm:
 
   # KL control configuration
   kl_ctrl:
-
     # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
     _target_: verl.trainer.config.KLControlConfig
 
@@ -125,7 +120,6 @@ algorithm:
 
   # Preference feedback PPO settings
   pf_ppo:
-
     # Method for reweighting samples: "pow", "max_min", or "max_random"
     reweight_method: pow
 
@@ -156,7 +150,6 @@ algorithm:
 
 # config for the trainer
 trainer:
-
   # Whether to balance batch sizes across distributed workers
   balance_batch: True
 
@@ -248,7 +241,6 @@ trainer:
 
 # profiler configs
 global_profiler:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.utils.profiler.ProfilerConfig
 
@@ -268,10 +260,8 @@ global_profiler:
 
   # Specific tool configs, can use +profiler.tool_config.[tool].xxx to config
   global_tool_config:
-
     # nsys config
     nsys:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.NsightToolConfig
 
@@ -282,7 +272,6 @@ global_profiler:
       ## reference https://docs.nvidia.com/nsight-systems/UserGuide/index.html
       ## reference https://docs.ray.io/en/latest/ray-observability/user-guides/profiling.html
       controller_nsight_options:
-
         # Select the API(s) to be traced.
         trace: "cuda,nvtx,cublas,ucx"
 
@@ -294,7 +283,6 @@ global_profiler:
 
       # worker Nvidia Nsight Systems Options. Must set when profile_steps is not None.
       worker_nsight_options:
-
         # Select the API(s) to be traced.
         trace: "cuda,nvtx,cublas,ucx"
 
@@ -320,7 +308,6 @@ global_profiler:
 
     # enable memory visualization for debugging memory usage
     torch_memory:
-
       #  Maximum number of allocation entries to record
       trace_alloc_max_entries: 100_000
 
@@ -338,16 +325,13 @@ global_profiler:
 
 # configs for TransferQueue
 transfer_queue:
-
   # Whether to enable transfer queue
   enable: False
 
 # configs related to ray
 ray_kwargs:
-
   # configs related to ray initialization
   ray_init:
-
     # Number of CPUs for Ray. Use a fixed number instead of null when using SLURM.
     num_cpus: null
 

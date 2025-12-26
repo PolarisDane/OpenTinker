@@ -17,7 +17,6 @@ strategy: ???
 
 # model config for reward scoring
 model:
-
   # Input tokenizer. If the reward model's chat template is inconsistent with the policy,
   # we need to first decode to plaintext, then apply the rm's chat_template.
   # Then score with RM. If chat_templates are consistent, it can be set to null.
@@ -61,7 +60,6 @@ launch_reward_fn_async: False
 
 # Cloud/local sandbox fusion configuration for custom reward logic
 sandbox_fusion:
-
   # Cloud /local function URL for sandbox execution
   url: null
 
@@ -71,9 +69,8 @@ sandbox_fusion:
   # Max memory limit for each sandbox process in MB
   memory_limit_mb: 1024
 
-# profile the reward model in `compute_reward` 
+# profile the reward model in `compute_reward`
 profiler:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.utils.profiler.ProfilerConfig
 
@@ -83,7 +80,7 @@ profiler:
 
   # whether enable profile on ref
   enable: False
-  
+
   # Whether to profile all ranks.
   all_ranks: False
 

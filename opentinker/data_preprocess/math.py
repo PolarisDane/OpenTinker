@@ -17,11 +17,21 @@ def extract_solution(solution_str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--local_dir", default="./data", help="The local directory for the preprocessed dataset.")
-    parser.add_argument("--hdfs_dir", default=None)
-    parser.add_argument("--local_dataset_path", default=None, help="The local path to the raw dataset, if it exists.")
     parser.add_argument(
-        "--local_save_dir", default="./data", help="The save directory for the preprocessed dataset."
+        "--local_dir",
+        default="./data",
+        help="The local directory for the preprocessed dataset.",
+    )
+    parser.add_argument("--hdfs_dir", default=None)
+    parser.add_argument(
+        "--local_dataset_path",
+        default=None,
+        help="The local path to the raw dataset, if it exists.",
+    )
+    parser.add_argument(
+        "--local_save_dir",
+        default="./data",
+        help="The save directory for the preprocessed dataset.",
     )
 
     args = parser.parse_args()
@@ -38,7 +48,9 @@ if __name__ == "__main__":
     train_dataset = dataset["train"]
     test_dataset = dataset["test"]
 
-    instruction_following = "Let's think step by step and output the final answer within \\boxed{}."
+    instruction_following = (
+        "Let's think step by step and output the final answer within \\boxed{}."
+    )
 
     # build map function
     def make_map_fn():
@@ -53,6 +65,7 @@ if __name__ == "__main__":
                 "ground_truth": solution,
                 "data_source": data_source,
             }
+
         return process_fn
 
     train_dataset = train_dataset.map(make_map_fn(), with_indices=True)

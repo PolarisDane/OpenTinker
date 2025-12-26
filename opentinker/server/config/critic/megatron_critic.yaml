@@ -1,6 +1,5 @@
 # defaults specify the default config from each component
 defaults:
-
   # megatron optimizer config
   - ../optim@optim: megatron
 
@@ -23,17 +22,14 @@ nccl_timeout: 600
 
 # model config for the critic
 model:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.trainer.config.BaseModelConfig
 
   # override default empty mapping
   override_config:
-
     model_config: {}
 
     moe_config:
-
       freeze_moe_router: False
 
 # Whether to load initial weights

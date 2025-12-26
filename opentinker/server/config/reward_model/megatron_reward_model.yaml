@@ -1,6 +1,5 @@
 # defaults specify the default config from each component
 defaults:
-
   # dp actor config, inheriting from trainer/config/reward_model/reward_model.yaml
   - reward_model
 
@@ -15,7 +14,6 @@ nccl_timeout: 600
 
 # Megatron parallelism & checkpointing config
 megatron:
-
   # Target configuration dataclass
   _target_: verl.workers.config.MegatronEngineConfig
 

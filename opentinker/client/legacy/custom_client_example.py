@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-import argparse
-import torch
-from transformers import AutoTokenizer
-from omegaconf import OmegaConf
 import subprocess
 import os
 import time
@@ -10,9 +6,6 @@ import atexit
 import requests
 
 from http_training_client import ServiceClient
-from verl.trainer.main_ppo import create_rl_dataset, create_rl_sampler
-from verl.utils.dataset.rl_dataset import collate_fn
-from torchdata.stateful_dataloader import StatefulDataLoader
 from opentinker.environment.environment import RewardFunctionSpec
 from opentinker.environment.math.math_env_legacy import MathEnvironment
 import hydra
@@ -23,49 +16,56 @@ from utils import math_reward_function, resolve_paths_in_config, find_free_port
 reward_server_process = None
 
 
-def start_reward_server(reward_server_path="../reward_functions/math_reward_server.py", reward_ip="localhost", reward_port=None, wait_time=5):
+def start_reward_server(
+    reward_server_path="../reward_functions/math_reward_server.py",
+    reward_ip="localhost",
+    reward_port=None,
+    wait_time=5,
+):
     """
     Start the math reward server in the background
-    
+
     Args:
         reward_server_path: Path to the reward server script (relative or absolute)
         reward_ip: IP address for the reward server (default: "localhost")
         reward_port: Port number for the reward server (default: None, auto-assigned)
         wait_time: Time to wait for server to start (default: 5 seconds)
-    
+
     Returns:
         tuple: (subprocess.Popen, int) - The reward server process and the port number used
     """
     global reward_server_process
-    
+
     # Auto-assign port if not specified
     if reward_port is None:
         reward_port = find_free_port()
-    
+
     # Resolve the path to the reward server
     # If it's a relative path, resolve it relative to this script's directory
     if not os.path.isabs(reward_server_path):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        reward_server_path = os.path.normpath(os.path.join(current_dir, reward_server_path))
-    
+        reward_server_path = os.path.normpath(
+            os.path.join(current_dir, reward_server_path)
+        )
+
     if not os.path.exists(reward_server_path):
         raise FileNotFoundError(f"Reward server not found at: {reward_server_path}")
-    
+
     print(f"Starting reward server from: {reward_server_path}")
     print(f"Server will listen on: http://{reward_ip}:{reward_port}")
-    
+
     # Start the server process with port argument
     reward_server_process = subprocess.Popen(
         ["python", reward_server_path, "--port", str(reward_port), "--host", reward_ip],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
     )
-    
+
     # Wait for the server to start
     print(f"Waiting {wait_time} seconds for server to start...")
     time.sleep(wait_time)
-    
+
     # Check if server is running
     try:
         response = requests.get(f"http://{reward_ip}:{reward_port}/health", timeout=2)
@@ -75,9 +75,8 @@ def start_reward_server(reward_server_path="../reward_functions/math_reward_serv
             print(f"⚠ Reward server responded with status: {response.status_code}")
     except requests.exceptions.RequestException as e:
         print(f"⚠ Warning: Could not verify server health: {e}")
-    
-    return reward_server_process, reward_port
 
+    return reward_server_process, reward_port
 
 
 def cleanup_reward_server():
@@ -112,38 +111,38 @@ def main(args):
     elif args.reward.type == "remote":
         # Auto-start reward server if auto_start is enabled
         if args.reward.remote.get("auto_start", False):
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("AUTO-STARTING REWARD SERVER")
-            print("="*60)
-            
+            print("=" * 60)
+
             # Get port from config, or let start_reward_server auto-assign one
             port = args.reward.remote.get("reward_port", None)
-            
+
             # Start the reward server and get the actual port used
             _, actual_port = start_reward_server(
-                reward_server_path="../reward_functions/math_reward_server.py", 
-                reward_ip=args.reward.remote.reward_ip, 
-                reward_port=port, 
-                wait_time=5
+                reward_server_path="../reward_functions/math_reward_server.py",
+                reward_ip=args.reward.remote.reward_ip,
+                reward_port=port,
+                wait_time=5,
             )
-            
+
             # Build the remote endpoint using the actual port
             remote_endpoint = f"http://{args.reward.remote.reward_ip}:{actual_port}"
-            
+
             print(f"Using reward endpoint: {remote_endpoint}")
-            print("="*60 + "\n")
+            print("=" * 60 + "\n")
         else:
             # Use the endpoint from config
-            port = args.reward.remote.get('reward_port', 30001)
+            port = args.reward.remote.get("reward_port", 30001)
             remote_endpoint = f"http://{args.reward.remote.reward_ip}:{port}"
-        
+
         # Create RewardFunctionSpec with type="remote"
         reward_function = RewardFunctionSpec(
             type="remote",
             remote_endpoint=remote_endpoint,
             remote_api_key=args.reward.remote.remote_api_key,
         )
-    
+
     env = MathEnvironment(config=args, reward_function=reward_function)
 
     print(f"\nConnecting to server at {args.server_url}")
@@ -159,14 +158,14 @@ def main(args):
     # 7. Train - support both num_steps and num_epochs (num_steps takes precedence)
     num_steps = args.get("num_steps", None)
     num_epochs = args.get("num_epochs", None)
-    
+
     if num_steps:
         print(f"\nStarting training for {num_steps} steps...")
     elif num_epochs:
         print(f"\nStarting training for {num_epochs} epochs...")
     else:
         print("\nStarting training (1 epoch default)...")
-        
+
     print(f"Checkpoint save frequency: {args.save_freq}")
     print(f"Validation frequency: {args.test_freq}")
     print("=" * 60)

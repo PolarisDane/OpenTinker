@@ -6,7 +6,6 @@
 
 # defaults specify the default config from each component
 defaults:
-
   # dp actor config, inheriting from trainer/config/reward_model/reward_model.yaml
   - reward_model
 
@@ -16,7 +15,6 @@ defaults:
 strategy: fsdp
 
 model:
-
   # Whether to use shared memory for loading the model
   use_shm: False
 
@@ -28,13 +26,11 @@ model:
 
   # FSDP-specific config
   fsdp_config:
-
     # Target configuration dataclass
     _target_: verl.workers.config.FSDPEngineConfig
 
     # Policy for wrapping layers with FSDP
     wrap_policy:
-
       # Minimum number of parameters to trigger wrapping
       min_num_params: 0
 

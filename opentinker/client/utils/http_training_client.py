@@ -35,7 +35,6 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 
 
 class HTTPTrainingClient:
-
     def __init__(
         self,
         server_url: str,
@@ -43,7 +42,6 @@ class HTTPTrainingClient:
         max_retries: int = 1000,  # Increased from 3 to 10 for server initialization
         retry_delay: float = 5.0,  # Increased from 2.0 to 5.0 seconds
     ):
-
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
@@ -59,7 +57,6 @@ class HTTPTrainingClient:
         json_data: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
     ) -> Dict[str, Any]:
-
         url = f"{self.server_url}/api/v1/{endpoint}"
         timeout = timeout or self.timeout
 
@@ -76,9 +73,13 @@ class HTTPTrainingClient:
                 return response.json()
 
             except requests.exceptions.Timeout:
-                logger.warning(f"Request to {endpoint} timed out (attempt {attempt + 1}/{self.max_retries})")
+                logger.warning(
+                    f"Request to {endpoint} timed out (attempt {attempt + 1}/{self.max_retries})"
+                )
             except requests.exceptions.ConnectionError:
-                logger.warning(f"Connection error for {endpoint} (attempt {attempt + 1}/{self.max_retries})")
+                logger.warning(
+                    f"Connection error for {endpoint} (attempt {attempt + 1}/{self.max_retries})"
+                )
             except requests.exceptions.HTTPError as e:
                 logger.error(f"HTTP error for {endpoint}: {e}")
                 raise
@@ -93,7 +94,9 @@ class HTTPTrainingClient:
                 logger.info(f"Retrying in {wait_time:.1f} seconds...")
                 time.sleep(wait_time)
 
-        raise RuntimeError(f"Failed to complete request to {endpoint} after {self.max_retries} attempts")
+        raise RuntimeError(
+            f"Failed to complete request to {endpoint} after {self.max_retries} attempts"
+        )
 
     def health_check(self) -> Dict[str, Any]:
         return self._make_request("GET", "health", timeout=5.0)
@@ -101,9 +104,16 @@ class HTTPTrainingClient:
     def get_status(self) -> Dict[str, Any]:
         return self._make_request("GET", "status")
 
-    def init_workers(self, total_steps: int = 100, timeout: float = 600.0) -> Dict[str, Any]:
+    def init_workers(
+        self, total_steps: int = 100, timeout: float = 600.0
+    ) -> Dict[str, Any]:
         logger.info("Initializing workers on server (this may take several minutes)...")
-        result = self._make_request("POST", "init_workers", json_data={"total_steps": total_steps}, timeout=timeout)
+        result = self._make_request(
+            "POST",
+            "init_workers",
+            json_data={"total_steps": total_steps},
+            timeout=timeout,
+        )
         logger.info("Workers initialized successfully")
         return result
 
@@ -112,10 +122,9 @@ class HTTPTrainingClient:
         result = self._make_request("POST", "set_generation_config", json_data=config)
         return result
 
-
     def set_config(self, config: Dict[str, Any], env=None) -> Dict[str, Any]:
         """Set configuration on server.
-        
+
         Args:
             config: Configuration dictionary to send to server
             env: Optional BaseEnvironment instance. If provided, will call env.setup()
@@ -125,9 +134,8 @@ class HTTPTrainingClient:
         # If environment is provided, setup reward functions first
         assert env is not None, "Environment must be provided to set_config"
         env_config = env.setup(self)
-        
-        logger.info(f"Setting config: {config}")
 
+        logger.info(f"Setting config: {config}")
 
         if isinstance(config, DictConfig):
             assert env_config is not None, "Env config must be provided to set_config"
@@ -135,9 +143,11 @@ class HTTPTrainingClient:
                 config,
                 OmegaConf.create(env_config),
             )
-        
+
         config_payload = OmegaConf.to_container(config, resolve=True)
-        result = self._make_request("POST", "set_config", json_data={"config_overrides": config_payload})
+        result = self._make_request(
+            "POST", "set_config", json_data={"config_overrides": config_payload}
+        )
         return result
 
     def train_step(self, batch: DataProto) -> Dict[str, Any]:
@@ -145,13 +155,17 @@ class HTTPTrainingClient:
         batch_data = serialize_dataproto(batch)
 
         # Send request
-        result = self._make_request("POST", "train_step", json_data={"batch_data": batch_data})
+        result = self._make_request(
+            "POST", "train_step", json_data={"batch_data": batch_data}
+        )
 
         return result
 
     def validate(self, batch: DataProto) -> Dict[str, Any]:
         batch_data = serialize_dataproto(batch)
-        result = self._make_request("POST", "validate", json_data={"batch_data": batch_data})
+        result = self._make_request(
+            "POST", "validate", json_data={"batch_data": batch_data}
+        )
 
         return result
 
@@ -161,38 +175,36 @@ class HTTPTrainingClient:
         logger.info(f"Checkpoint saved: {result}")
         return result
 
-    def upload_reward_function(self, function_name: str, source_code: str) -> Dict[str, Any]:
+    def upload_reward_function(
+        self, function_name: str, source_code: str
+    ) -> Dict[str, Any]:
         """Upload custom reward function code to server.
-        
+
         Args:
             function_name: Name of the reward function
             source_code: Python source code of the function
-            
+
         Returns:
             Server response
         """
         logger.info(f"Uploading custom reward function: {function_name}")
         result = self._make_request(
-            "POST", 
-            "upload_reward_function", 
-            json_data={
-                "function_name": function_name,
-                "source_code": source_code
-            }
+            "POST",
+            "upload_reward_function",
+            json_data={"function_name": function_name, "source_code": source_code},
         )
-        logger.info(f"Reward function uploaded successfully")
+        logger.info("Reward function uploaded successfully")
         return result
-
 
 
 class SchedulerClient:
     """
     Client for interacting with the job scheduler.
-    
+
     This class handles job submission to the scheduler and waits for
     server allocation before proceeding with training.
     """
-    
+
     def __init__(
         self,
         scheduler_url: str,
@@ -202,7 +214,7 @@ class SchedulerClient:
     ):
         """
         Initialize scheduler client.
-        
+
         Args:
             scheduler_url: URL of the job scheduler
             api_key: API key for authentication (if enabled on scheduler)
@@ -214,17 +226,15 @@ class SchedulerClient:
         self.timeout = timeout
         self.poll_interval = poll_interval
         self.session = requests.Session()
-        
+
         # Set Authorization header if API key provided
         if self.api_key:
-            self.session.headers.update({
-                "Authorization": f"Bearer {self.api_key}"
-            })
-        
+            self.session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+
         logger.info(f"SchedulerClient initialized for scheduler: {self.scheduler_url}")
         if self.api_key:
             logger.info("Authentication enabled with API key")
-    
+
     def submit_job(
         self,
         config: Dict[str, Any],
@@ -234,23 +244,24 @@ class SchedulerClient:
     ) -> Dict[str, Any]:
         """
         Submit a training job to the scheduler.
-        
+
         Args:
             config: Training configuration dict
             enable_agent_loop: Whether to enable agent loop mode
             wandb_key: WandB API key
             num_gpus: Number of GPUs to request (optional, uses scheduler default if not specified)
-        
+
         Returns:
             Dict with job_id and server_url
         """
         logger.info("Submitting job to scheduler...")
-        
+
         # Convert OmegaConf to dict if needed
-        if hasattr(config, '__dict__') and 'config' in config.__dict__:
+        if hasattr(config, "__dict__") and "config" in config.__dict__:
             from omegaconf import OmegaConf
+
             config = OmegaConf.to_container(config, resolve=True)
-        
+
         # Submit job
         response = self.session.post(
             f"{self.scheduler_url}/submit_job",
@@ -264,40 +275,38 @@ class SchedulerClient:
         )
         response.raise_for_status()
         result = response.json()
-        
+
         job_id = result["job_id"]
         status = result["status"]
-        
+
         logger.info(f"Job submitted: {job_id}, status: {status}")
-        
+
         # If job is already running, return immediately
         if result.get("server_url"):
             logger.info(f"Job {job_id} started immediately on {result['server_url']}")
             return result
-        
+
         # Otherwise, wait for job to start
         logger.info(f"Job {job_id} is queued, waiting for resources...")
         return self._wait_for_job_start(job_id)
-    
+
     def _wait_for_job_start(self, job_id: str) -> Dict[str, Any]:
         """
         Wait for a queued job to start.
-        
+
         Args:
             job_id: ID of the job
-        
+
         Returns:
             Dict with job status including server_url
         """
         start_time = time.time()
-        
+
         while True:
             # Check timeout
             if time.time() - start_time > self.timeout:
-                raise TimeoutError(
-                    f"Job {job_id} did not start within {self.timeout}s"
-                )
-            
+                raise TimeoutError(f"Job {job_id} did not start within {self.timeout}s")
+
             # Poll job status (increased timeout to 30s to handle scheduler processing multiple jobs)
             response = self.session.get(
                 f"{self.scheduler_url}/job_status/{job_id}",
@@ -305,31 +314,29 @@ class SchedulerClient:
             )
             response.raise_for_status()
             status_result = response.json()
-            
+
             job_status = status_result["status"]
-            
+
             if job_status == "RUNNING":
-                logger.info(
-                    f"Job {job_id} started on {status_result['server_url']}"
-                )
+                logger.info(f"Job {job_id} started on {status_result['server_url']}")
                 return status_result
             elif job_status in ["FAILED", "CANCELLED"]:
                 error_msg = status_result.get("error_message", "Unknown error")
-                raise RuntimeError(
-                    f"Job {job_id} failed: {error_msg}"
-                )
-            
+                raise RuntimeError(f"Job {job_id} failed: {error_msg}")
+
             # Still queued or starting, wait and retry
-            logger.info(f"Job {job_id} status: {job_status}, waiting for RL server to be ready...")
+            logger.info(
+                f"Job {job_id} status: {job_status}, waiting for RL server to be ready..."
+            )
             time.sleep(self.poll_interval)
-    
+
     def cancel_job(self, job_id: str) -> Dict[str, Any]:
         """
         Cancel a job.
-        
+
         Args:
             job_id: ID of the job to cancel
-        
+
         Returns:
             Cancellation result
         """
@@ -340,14 +347,14 @@ class SchedulerClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def complete_job(self, job_id: str) -> Dict[str, Any]:
         """
         Mark a job as completed.
-        
+
         Args:
             job_id: ID of the job
-        
+
         Returns:
             Completion result
         """
@@ -363,11 +370,11 @@ class SchedulerClient:
 class InferenceSchedulerClient:
     """
     Client for submitting inference jobs to the scheduler.
-    
+
     This class handles inference job submission that launches vLLM servers
     on the scheduler, with lifecycle management support.
     """
-    
+
     def __init__(
         self,
         scheduler_url: str,
@@ -377,7 +384,7 @@ class InferenceSchedulerClient:
     ):
         """
         Initialize inference scheduler client.
-        
+
         Args:
             scheduler_url: URL of the job scheduler
             api_key: API key for authentication (if enabled on scheduler)
@@ -389,14 +396,14 @@ class InferenceSchedulerClient:
         self.timeout = timeout
         self.poll_interval = poll_interval
         self.session = requests.Session()
-        
+
         if self.api_key:
-            self.session.headers.update({
-                "Authorization": f"Bearer {self.api_key}"
-            })
-        
-        logger.info(f"InferenceSchedulerClient initialized for scheduler: {self.scheduler_url}")
-    
+            self.session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+
+        logger.info(
+            f"InferenceSchedulerClient initialized for scheduler: {self.scheduler_url}"
+        )
+
     def submit_inference_job(
         self,
         model_path: str,
@@ -409,10 +416,10 @@ class InferenceSchedulerClient:
     ) -> Dict[str, Any]:
         """
         Submit an inference job to the scheduler.
-        
+
         This will launch a vLLM server on the scheduler with the specified
         configuration and return the server URL when ready.
-        
+
         Args:
             model_path: Path to model checkpoint
             tokenizer_path: Tokenizer path (defaults to model_path)
@@ -421,12 +428,12 @@ class InferenceSchedulerClient:
             gpu_memory_utilization: GPU memory fraction to use
             max_model_len: Max model context length (optional)
             trust_remote_code: Whether to trust remote code
-        
+
         Returns:
             Dict with job_id and vllm_server_url
         """
         logger.info("Submitting inference job to scheduler...")
-        
+
         response = self.session.post(
             f"{self.scheduler_url}/submit_inference_job",
             json={
@@ -442,73 +449,79 @@ class InferenceSchedulerClient:
         )
         response.raise_for_status()
         result = response.json()
-        
+
         job_id = result["job_id"]
         status = result["status"]
-        
+
         logger.info(f"Inference job submitted: {job_id}, status: {status}")
-        
+
         # If job is already running (rare but possible), return immediately
         if status == "RUNNING" and result.get("vllm_server_url"):
-            logger.info(f"Inference job {job_id} is already running at {result['vllm_server_url']}")
+            logger.info(
+                f"Inference job {job_id} is already running at {result['vllm_server_url']}"
+            )
             return result
-        
+
         # For STARTING or QUEUED status, wait for job to become RUNNING
         # Note: With async startup, jobs now go to STARTING immediately
-        logger.info(f"Inference job {job_id} status: {status}, waiting for server to be ready...")
+        logger.info(
+            f"Inference job {job_id} status: {status}, waiting for server to be ready..."
+        )
         return self._wait_for_job_start(job_id)
-    
+
     def _wait_for_job_start(self, job_id: str) -> Dict[str, Any]:
         """
         Wait for a queued inference job to start.
-        
+
         Args:
             job_id: ID of the job
-        
+
         Returns:
             Dict with job status including vllm_server_url
         """
         start_time = time.time()
-        
+
         while True:
             if time.time() - start_time > self.timeout:
                 raise TimeoutError(
                     f"Inference job {job_id} did not start within {self.timeout}s"
                 )
-            
+
             response = self.session.get(
                 f"{self.scheduler_url}/job_status/{job_id}",
                 timeout=6000.0,
             )
             response.raise_for_status()
             status_result = response.json()
-            
+
             job_status = status_result["status"]
-            
+
             if job_status == "RUNNING":
                 # For inference jobs, get vllm_server_url from the stored job info
                 # The server_url field may contain it, or we need to construct from port
                 vllm_url = status_result.get("server_url")
                 if not vllm_url and status_result.get("port"):
                     vllm_url = f"http://localhost:{status_result['port']}"
-                
+
                 logger.info(f"Inference job {job_id} started at {vllm_url}")
                 status_result["vllm_server_url"] = vllm_url
                 return status_result
             elif job_status in ["FAILED", "CANCELLED"]:
                 error_msg = status_result.get("error_message", "Unknown error")
                 raise RuntimeError(f"Inference job {job_id} failed: {error_msg}")
-            
-            logger.info(f"Inference job {job_id} status: {job_status}, waiting for inferenceserver to be ready...")
+
+            logger.info(
+                f"Inference job {job_id} status: {job_status}, waiting for inferenceserver to be ready..."
+            )
             time.sleep(self.poll_interval)
-    
+
     def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """
         Get status of an inference job.
-        
+
         Args:
             job_id: ID of the job
-        
+
         Returns:
             Job status information
         """
@@ -518,14 +531,14 @@ class InferenceSchedulerClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def cancel_job(self, job_id: str) -> Dict[str, Any]:
         """
         Cancel an inference job (stops the vLLM server).
-        
+
         Args:
             job_id: ID of the job to cancel
-        
+
         Returns:
             Cancellation result
         """
@@ -536,17 +549,17 @@ class InferenceSchedulerClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def complete_job(self, job_id: str) -> Dict[str, Any]:
         """
         Mark an inference job as completed (stops the vLLM server and releases resources).
-        
+
         This should be called when the inference task is finished to properly clean up
         the vLLM server process and release GPU resources.
-        
+
         Args:
             job_id: ID of the job to complete
-        
+
         Returns:
             Completion result
         """
@@ -566,9 +579,8 @@ class ServiceClient:
         project_name: Optional[str] = None,
         experiment_name: Optional[str] = None,
         logger_backends: Optional[List[str]] = None,
-        **client_kwargs
+        **client_kwargs,
     ):
-
         self.client = HTTPTrainingClient(server_url, **client_kwargs)
 
         # Initialize tracking
@@ -583,47 +595,48 @@ class ServiceClient:
                 config=None,  # Can pass config if needed
             )
             logger.info(f"Initialized tracking with backends: {logger_backends}")
-    
-    def set_config(self, args: DictConfig, env=None):
 
+    def set_config(self, args: DictConfig, env=None):
         # 7.5 define general config
 
         # 同一个key出现两次，后者会将前者覆盖
-        server_cfg = OmegaConf.create({
-            "data": {
-                "max_prompt_length": args.max_prompt_tokens,
-                "max_response_length": args.max_new_tokens,
-            },
-            "actor_rollout_ref": {
-                "model": {
-                    "path": args.tokenizer_path,
+        server_cfg = OmegaConf.create(
+            {
+                "data": {
+                    "max_prompt_length": args.max_prompt_tokens,
+                    "max_response_length": args.max_new_tokens,
                 },
-                "rollout": {
-                    "tensor_model_parallel_size": 2 if args.num_gpus > 1 else 1,
+                "actor_rollout_ref": {
+                    "model": {
+                        "path": args.tokenizer_path,
+                    },
+                    "rollout": {
+                        "tensor_model_parallel_size": 2 if args.num_gpus > 1 else 1,
+                    },
                 },
-            },
-            "critic": {
-                "model": {
-                    "path": args.tokenizer_path,
+                "critic": {
+                    "model": {
+                        "path": args.tokenizer_path,
+                    },
                 },
-            },
-            "trainer": {
-                "n_gpus_per_node": args.num_gpus,
-            },
-            
-        })
-        
+                "trainer": {
+                    "n_gpus_per_node": args.num_gpus,
+                },
+            }
+        )
+
         # Add multi_turn config if present in args
         if hasattr(args, "multi_turn") and args.multi_turn:
             multi_turn_cfg = OmegaConf.to_container(args.multi_turn, resolve=True)
-            server_cfg = OmegaConf.merge(server_cfg, OmegaConf.create({
-                "actor_rollout_ref": {
-                    "rollout": {
-                        "multi_turn": multi_turn_cfg
-                    }
-                }
-            }))
-            print(f"[ServiceClient] Passing multi_turn config to server: {multi_turn_cfg}")
+            server_cfg = OmegaConf.merge(
+                server_cfg,
+                OmegaConf.create(
+                    {"actor_rollout_ref": {"rollout": {"multi_turn": multi_turn_cfg}}}
+                ),
+            )
+            print(
+                f"[ServiceClient] Passing multi_turn config to server: {multi_turn_cfg}"
+            )
 
         generation_config = {
             "temperature": args.temperature,
@@ -632,7 +645,7 @@ class ServiceClient:
         }
         self.client.set_generation_config(generation_config)
         self.client.set_config(server_cfg, env)
-    
+
     def upload_reward_function(self, function_name: str, source_code: str):
         """Upload custom reward function code to server."""
         self.client.upload_reward_function(function_name, source_code)
@@ -651,10 +664,10 @@ class ServiceClient:
     ):
         """
         Train the model.
-        
+
         Args:
             env: Training environment
-            num_epochs: Number of epochs to train (mutually exclusive with num_steps, 
+            num_epochs: Number of epochs to train (mutually exclusive with num_steps,
                        ignored if num_steps is provided)
             num_steps: Total number of training steps (takes precedence over num_epochs)
             save_freq: Checkpoint save frequency (in steps)
@@ -664,7 +677,7 @@ class ServiceClient:
             game_stats_client: Optional GameStatsClient for fetching per-step game metrics
             game_stats_log_freq: How often to log game stats (in steps), only used if
                                 game_stats_client is provided
-        
+
         Note:
             - If both num_steps and num_epochs are provided, num_steps takes precedence
             - If neither is provided, defaults to 1 epoch
@@ -673,35 +686,43 @@ class ServiceClient:
         train_dataloader, val_dataloader = env.get_dataloader()
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
-        
+
         # 1. Check server health
         try:
             health = self.client.health_check()
             logger.info(f"Server health: {health}")
         except Exception as e:
             logger.error(f"Failed to connect to server: {e}")
-            raise RuntimeError(f"Cannot connect to server at {self.client.server_url}") from e
+            raise RuntimeError(
+                f"Cannot connect to server at {self.client.server_url}"
+            ) from e
 
         # 2. Calculate total_steps and effective num_epochs
         try:
             dataloader_len = len(train_dataloader)
         except TypeError:
-            raise TypeError("train_dataloader must support len() to calculate total_steps. "
-                          "Please use a dataloader that implements __len__().")
-        
+            raise TypeError(
+                "train_dataloader must support len() to calculate total_steps. "
+                "Please use a dataloader that implements __len__()."
+            )
+
         # Determine training duration: num_steps takes precedence over num_epochs
         use_step_limit = num_steps is not None
-        
+
         if use_step_limit:
             total_steps = num_steps
             effective_epochs = (total_steps + dataloader_len - 1) // dataloader_len
-            logger.info(f"Training for {total_steps} steps (max {effective_epochs} epochs, {dataloader_len} steps per epoch)")
+            logger.info(
+                f"Training for {total_steps} steps (max {effective_epochs} epochs, {dataloader_len} steps per epoch)"
+            )
         else:
             if num_epochs is None:
                 num_epochs = 1
             effective_epochs = num_epochs
             total_steps = dataloader_len * num_epochs
-            logger.info(f"Training for {num_epochs} epochs ({dataloader_len} steps per epoch, {total_steps} total steps)")
+            logger.info(
+                f"Training for {num_epochs} epochs ({dataloader_len} steps per epoch, {total_steps} total steps)"
+            )
 
         # 3. Initialize workers
         self.client.init_workers(total_steps)
@@ -718,14 +739,14 @@ class ServiceClient:
         global_steps = 0
         last_metrics = {}
         steps_completed = 0
-        
+
         progress_bar = tqdm(total=total_steps, desc="Training") if verbose else None
 
         try:
             for epoch in range(effective_epochs):
                 if verbose:
                     logger.info(f"Starting epoch {epoch + 1}/{effective_epochs}")
-                
+
                 for batch_dict in train_dataloader:
                     # Reset game stats before each step (if game_stats_client provided)
                     if game_stats_client:
@@ -733,7 +754,7 @@ class ServiceClient:
                             game_stats_client.reset_step()
                         except Exception as e:
                             logger.warning(f"Failed to reset game stats: {e}")
-                    
+
                     # Convert to DataProto and execute training step
                     batch = DataProto.from_single_dict(batch_dict)
                     result = self.client.train_step(batch)
@@ -755,8 +776,11 @@ class ServiceClient:
                             if game_metrics:
                                 # Filter out 'step' to avoid confusion - it can get out of sync
                                 # due to validation resets. Use global_steps instead.
-                                prefixed = {f"game/{k}": v for k, v in game_metrics.items() 
-                                           if isinstance(v, (int, float)) and k != "step"}
+                                prefixed = {
+                                    f"game/{k}": v
+                                    for k, v in game_metrics.items()
+                                    if isinstance(v, (int, float)) and k != "step"
+                                }
                                 last_metrics.update(prefixed)
                         except Exception as e:
                             logger.warning(f"Failed to get game stats: {e}")
@@ -770,24 +794,46 @@ class ServiceClient:
                     # Update progress bar
                     if verbose and progress_bar:
                         # Show key metrics in progress bar (filter game/ metrics except win_rate)
-                        display_metrics = {k: v for k, v in last_metrics.items() 
-                                          if not k.startswith("game/") or k == "game/win_rate"}
-                        metrics_str = ", ".join([f"{k}: {v:.4f}" for k, v in list(display_metrics.items())[:5]])
-                        epoch_str = f"Epoch {epoch + 1}/{effective_epochs}" if not use_step_limit else f"Epoch {epoch + 1}"
+                        display_metrics = {
+                            k: v
+                            for k, v in last_metrics.items()
+                            if not k.startswith("game/") or k == "game/win_rate"
+                        }
+                        metrics_str = ", ".join(
+                            [
+                                f"{k}: {v:.4f}"
+                                for k, v in list(display_metrics.items())[:5]
+                            ]
+                        )
+                        epoch_str = (
+                            f"Epoch {epoch + 1}/{effective_epochs}"
+                            if not use_step_limit
+                            else f"Epoch {epoch + 1}"
+                        )
                         progress_bar.set_postfix_str(f"{epoch_str}, {metrics_str}")
                         progress_bar.update(1)
-                    
+
                     steps_completed += 1
-                    
+
                     # Check if we've reached the step limit
                     if use_step_limit and steps_completed >= total_steps:
-                        logger.info(f"Reached target of {total_steps} steps, stopping training.")
+                        logger.info(
+                            f"Reached target of {total_steps} steps, stopping training."
+                        )
                         break
 
                     # Validation
-                    if val_dataloader and test_freq > 0 and global_steps % test_freq == 0:
-                        val_metrics = self._run_validation(val_dataloader, game_stats_client)
-                        logger.info(f"Validation @ epoch {epoch + 1}, step {global_steps}: {val_metrics}")
+                    if (
+                        val_dataloader
+                        and test_freq > 0
+                        and global_steps % test_freq == 0
+                    ):
+                        val_metrics = self._run_validation(
+                            val_dataloader, game_stats_client
+                        )
+                        logger.info(
+                            f"Validation @ epoch {epoch + 1}, step {global_steps}: {val_metrics}"
+                        )
                         if self.tracker:
                             val_metrics_to_log = val_metrics.copy()
                             val_metrics_to_log["epoch"] = epoch + 1
@@ -799,7 +845,7 @@ class ServiceClient:
                         logger.info(
                             f"Checkpoint saved @ epoch {epoch + 1}, step {global_steps}: {ckpt_result['result']['checkpoint_dir']}"
                         )
-                
+
                 # Check if we've reached the step limit (after inner loop)
                 if use_step_limit and steps_completed >= total_steps:
                     break
@@ -807,6 +853,7 @@ class ServiceClient:
         except Exception as e:
             logger.error(f"Training loop failed with exception: {e}")
             import traceback
+
             traceback.print_exc()
             raise
         finally:
@@ -824,25 +871,31 @@ class ServiceClient:
                 self.tracker.log(val_metrics_to_log, step=global_steps)
 
         if use_step_limit:
-            logger.info(f"Training completed! {steps_completed} steps, final step: {global_steps}")
+            logger.info(
+                f"Training completed! {steps_completed} steps, final step: {global_steps}"
+            )
         else:
-            logger.info(f"Training completed! {num_epochs} epochs, final step: {global_steps}")
+            logger.info(
+                f"Training completed! {num_epochs} epochs, final step: {global_steps}"
+            )
         return last_metrics
 
-    def _run_validation(self, val_dataloader: Iterator, game_stats_client=None) -> Dict[str, float]:
+    def _run_validation(
+        self, val_dataloader: Iterator, game_stats_client=None
+    ) -> Dict[str, float]:
         """Run validation on all batches and aggregate metrics.
-        
+
         Args:
             val_dataloader: Validation data iterator
             game_stats_client: Optional GameStatsClient for fetching game metrics
-        
+
         Returns:
             Aggregated validation metrics including game stats if available
         """
         all_metrics = []
 
         logger.info("Running validation...")
-        
+
         # Reset game stats before validation (if game_stats_client provided)
         if game_stats_client:
             try:
@@ -867,17 +920,22 @@ class ServiceClient:
         for key in all_metrics[0].keys():
             values = [m[key] for m in all_metrics if key in m]
             aggregated[key] = float(np.mean(values))
-        
+
         # Fetch and add game stats (if game_stats_client provided)
         if game_stats_client:
             try:
                 game_metrics = game_stats_client.get_step_stats()
                 if game_metrics:
                     # Filter out 'step' to avoid confusion with global training step
-                    prefixed = {f"val_game/{k}": v for k, v in game_metrics.items() 
-                               if isinstance(v, (int, float)) and k != "step"}
+                    prefixed = {
+                        f"val_game/{k}": v
+                        for k, v in game_metrics.items()
+                        if isinstance(v, (int, float)) and k != "step"
+                    }
                     aggregated.update(prefixed)
-                    logger.info(f"Validation game stats: win_rate={game_metrics.get('win_rate', 0):.2%}")
+                    logger.info(
+                        f"Validation game stats: win_rate={game_metrics.get('win_rate', 0):.2%}"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to get validation game stats: {e}")
 

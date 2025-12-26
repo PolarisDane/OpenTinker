@@ -14,6 +14,7 @@
 """
 original file: verl/trainer/ppo/reward.py
 """
+
 import importlib.util
 import inspect
 import multiprocessing
@@ -75,25 +76,27 @@ def get_custom_reward_fn(config: DictConfig) -> Optional[RawRewardFn]:
     """
 
     reward_fn_config = config.get("custom_reward_function") or {}
-    
+
     # Check if this is a typed configuration (new format)
     reward_type = reward_fn_config.get("type")
-    
+
     if reward_type == "remote":
         # Remote API type - call external HTTP endpoint
         remote_endpoint = reward_fn_config.get("remote_endpoint")
         if not remote_endpoint:
             raise ValueError("remote_endpoint is required for type='remote'")
-        
+
         remote_api_key = reward_fn_config.get("remote_api_key")
-        
+
         # Create remote API caller based on recipe/opentinker/reward_function.py pattern
         # NOTE: This function is called PER SAMPLE by NaiveRewardManager (default)
         # For batch processing, use BatchRewardManager with a batch-style reward function
-        def remote_reward_fn(data_source, solution_str, ground_truth, extra_info, **kwargs):
+        def remote_reward_fn(
+            data_source, solution_str, ground_truth, extra_info, **kwargs
+        ):
             """
             Call remote reward API endpoint for a single example.
-            
+
             This function follows the signature expected by NaiveRewardManager:
             - Single data_source (str), not data_sources (list)
             - Single solution_str (str), not solution_strs (list)
@@ -102,16 +105,16 @@ def get_custom_reward_fn(config: DictConfig) -> Optional[RawRewardFn]:
             """
             import requests
             from time import sleep
-            
+
             MAX_RETRIES = 3
             BASE_DELAY = 2
-            
+
             for attempt in range(MAX_RETRIES):
                 try:
                     headers = {}
                     if remote_api_key:
                         headers["Authorization"] = f"Bearer {remote_api_key}"
-                    
+
                     data = {
                         "data_source": data_source,
                         "solution_str": solution_str,
@@ -119,32 +122,36 @@ def get_custom_reward_fn(config: DictConfig) -> Optional[RawRewardFn]:
                         "extra_info": extra_info,
                         # **kwargs
                     }
-                    
+
                     response = requests.post(
                         f"{remote_endpoint}/compute_reward",
                         json=data,
                         headers=headers,
-                        timeout=300
+                        timeout=300,
                     )
                     response.raise_for_status()
                     return response.json()["reward"]
-                    
+
                 except Exception as e:
                     if attempt < MAX_RETRIES - 1:
-                        delay = BASE_DELAY * (2 ** attempt)
-                        print(f"Remote reward API error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
+                        delay = BASE_DELAY * (2**attempt)
+                        print(
+                            f"Remote reward API error (attempt {attempt + 1}/{MAX_RETRIES}): {e}"
+                        )
                         print(f"Retrying in {delay} seconds...")
                         sleep(delay)
                     else:
-                        print(f"Failed to get remote reward after {MAX_RETRIES} attempts: {e}")
+                        print(
+                            f"Failed to get remote reward after {MAX_RETRIES} attempts: {e}"
+                        )
                         return 0.0  # Return 0 on failure
-            
+
             # Should not reach here, but return 0.0 as fallback
             return 0.0
-        
+
         print(f"Using remote reward function API: {remote_endpoint}")
         return remote_reward_fn
-    
+
     # File-based type (config or code) - original implementation
     file_path = reward_fn_config.get("config_path") or reward_fn_config.get("path")
     if not file_path:
@@ -169,18 +176,24 @@ def get_custom_reward_fn(config: DictConfig) -> Optional[RawRewardFn]:
             raise RuntimeError(f"Error loading module from '{file_path}': {e}") from e
 
     if not hasattr(module, function_name):
-        raise AttributeError(f"Reward function '{function_name}' not found in '{module.__file__}'.")
+        raise AttributeError(
+            f"Reward function '{function_name}' not found in '{module.__file__}'."
+        )
 
-    print(f"using customized reward function '{function_name}' from '{module.__file__}'")
+    print(
+        f"using customized reward function '{function_name}' from '{module.__file__}'"
+    )
     raw_fn = getattr(module, function_name)
 
-    reward_kwargs = dict(reward_fn_config.get("reward_kwargs", {}) or reward_fn_config.get("config_kwargs", {}))
+    reward_kwargs = dict(
+        reward_fn_config.get("reward_kwargs", {})
+        or reward_fn_config.get("config_kwargs", {})
+    )
 
     if not inspect.iscoroutinefunction(raw_fn):
         return partial(_call_with_kwargs, raw_fn, reward_kwargs)
     else:
         return partial(_call_with_kwargs_async, raw_fn, reward_kwargs)
-
 
 
 def load_reward_manager(
@@ -218,11 +231,15 @@ def load_reward_manager(
     if compute_score is None:
         sandbox_config = config.reward_model.get("sandbox_fusion")
         sandbox_url = sandbox_config.get("url") if sandbox_config else None
-        memory_limit_mb = sandbox_config.get("memory_limit_mb", 1024) if sandbox_config else 1024
+        memory_limit_mb = (
+            sandbox_config.get("memory_limit_mb", 1024) if sandbox_config else 1024
+        )
         if sandbox_url:
             sandbox_manager = multiprocessing.Manager()
             # Create a semaphore to control concurrent access to the sandbox
-            _concurrent_semaphore = sandbox_manager.Semaphore(sandbox_config.get("max_concurrent", 64))
+            _concurrent_semaphore = sandbox_manager.Semaphore(
+                sandbox_config.get("max_concurrent", 64)
+            )
             final_compute_score = partial(
                 default_compute_score,
                 sandbox_fusion_url=sandbox_url,
@@ -243,7 +260,9 @@ def load_reward_manager(
 
 
 @tqbridge(put_data=False)
-def compute_reward(data: DataProto, reward_fn: AbstractRewardManager) -> tuple[torch.Tensor, dict[str, Any]]:
+def compute_reward(
+    data: DataProto, reward_fn: AbstractRewardManager
+) -> tuple[torch.Tensor, dict[str, Any]]:
     """
     Compute reward for a batch of data.
     Args:
@@ -271,13 +290,19 @@ def compute_reward_async(data: DataProto, config=None, tokenizer=None, reward_fn
     This is meant to be run in a separate Ray worker.
     """
     if reward_fn is None:
-        assert config is not None and tokenizer is not None, (
-            "config and tokenizer must not be None when reward_fn is None"
-        )
+        assert (
+            config is not None and tokenizer is not None
+        ), "config and tokenizer must not be None when reward_fn is None"
 
-        warnings.warn("using config and tokenizer with compute_reward_async is deprecated", stacklevel=2)
+        warnings.warn(
+            "using config and tokenizer with compute_reward_async is deprecated",
+            stacklevel=2,
+        )
         reward_fn = load_reward_manager(
-            config, tokenizer, num_examine=0, **config.reward_model.get("reward_kwargs", {})
+            config,
+            tokenizer,
+            num_examine=0,
+            **config.reward_model.get("reward_kwargs", {}),
         )
 
     return compute_reward(data, reward_fn)

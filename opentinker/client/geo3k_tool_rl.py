@@ -8,10 +8,10 @@ before giving the final answer.
 Usage:
     # First, start the scheduler:
     bash opentinker/scripts/launch_scheduler.sh
-    
+
     # Then start the game server:
     python opentinker/environment/geo3k/geo3k_tool_server.py --port 8088
-    
+
     # Finally, run this training script:
     python opentinker/client/geo3k_tool_rl.py
 """
@@ -30,36 +30,38 @@ from opentinker.client.utils.scheduler_client_lifecycle import get_lifecycle_man
 def main(args):
     args = resolve_paths_in_config(args)
     lifecycle = get_lifecycle_manager()
-    
+
     print("=" * 60)
     print("Geo3K Multi-Turn Vision-Language Training")
     print("=" * 60)
-    
+
     # 1. Submit job to scheduler
     print("\n[1/4] Submitting job to scheduler...")
     scheduler_client = SchedulerClient(
         scheduler_url=args.get("scheduler_url", "http://localhost:8780"),
-        api_key=args.get("scheduler_api_key")
+        api_key=args.get("scheduler_api_key"),
     )
-    
+
     job_result = scheduler_client.submit_job(
         config=OmegaConf.to_container(args, resolve=True),
         enable_agent_loop=True,
         wandb_key=args.get("wandb_key"),
         num_gpus=args.get("num_gpus"),
     )
-    
+
     job_id = job_result["job_id"]
     server_url = job_result["server_url"]
     lifecycle.register_job(scheduler_client, job_id)
-    
+
     print(f"✓ Job {job_id} allocated at {server_url}")
-    
+
     # 2. Setup Geo3K multi-turn VL environment
     print("\n[2/4] Setting up environment...")
     env_endpoint = args.interaction.config.env_endpoint
-    
-    max_retries = args.multi_turn.get("max_assistant_turns", 3) - 1  # -1 for initial attempt
+
+    max_retries = (
+        args.multi_turn.get("max_assistant_turns", 3) - 1
+    )  # -1 for initial attempt
     env = Geo3KToolEnvironment(
         config=args,
         data_paths=[args.data_path],
@@ -67,10 +69,10 @@ def main(args):
         job_id=job_id,
         max_retries=max_retries,
     )
-    print(f"✓ Geo3K multi-turn VL environment created")
+    print("✓ Geo3K multi-turn VL environment created")
     print(f"  - Interaction config: {env.get_interaction_config_path()}")
     print(f"  - Max retries: {max_retries}")
-    
+
     # 3. Setup game stats client
     print("\n[3/4] Connecting to game server...")
     game_stats = GameStatsClient(env_endpoint, job_id=env.job_id)
@@ -80,8 +82,10 @@ def main(args):
     else:
         game_stats = None
         print(f"⚠ Game server not responding at {env_endpoint}")
-        print(f"  Make sure to start: python opentinker/environment/geo3k/geo3k_tool_server.py --port {args.interaction.config.env_port}")
-    
+        print(
+            f"  Make sure to start: python opentinker/environment/geo3k/geo3k_tool_server.py --port {args.interaction.config.env_port}"
+        )
+
     # 4. Connect to training server and train
     print("\n[4/4] Starting training...")
     client = ServiceClient(
@@ -91,15 +95,15 @@ def main(args):
         logger_backends=args.logger_backends,
     )
     client.set_config(args, env)
-    
-    print(f"\nTraining configuration:")
+
+    print("\nTraining configuration:")
     print(f"  - Algorithm: {args.algorithm}")
     print(f"  - Epochs: {args.get('num_epochs')}")
     print(f"  - Batch size: {args.batch_size}")
     print(f"  - Max assistant turns: {args.multi_turn.max_assistant_turns}")
     print(f"  - ADV estimator: {args.adv_estimator}")
     print(f"  - Rollout N: {args.rollout_n}")
-    
+
     try:
         final_metrics = client.fit(
             env=env,
@@ -111,7 +115,7 @@ def main(args):
             validate_before_training=True,
             game_stats_client=game_stats,
         )
-        print(f"\n✓ Training completed!")
+        print("\n✓ Training completed!")
         print(f"Final metrics: {final_metrics}")
     finally:
         env.cleanup()

@@ -24,22 +24,22 @@ from opentinker.environment.geo3k.geo3k_tool_game import Geo3KToolGame
 
 class Geo3KToolEnvironment(VLGameEnvironment):
     """Multi-turn VL environment for Geo3K geometry problems.
-    
+
     This environment uses:
     - Geo3KToolGame for multi-turn verification logic
     - StaticDatasetGeneratorVL for image handling
     - GymEnvironmentInteraction for HTTP communication
-    
+
     The model can submit answers multiple times and receive feedback
     in verl-compatible format: "Current parsed answer={answer} reward={0.0|1.0}"
-    
+
     Args:
         config: Configuration object
         data_paths: Training data paths (parquet files)
         val_data_paths: Validation data paths (optional)
         job_id: Job identifier
         max_retries: Max verification attempts per problem (default: 3)
-    
+
     Example:
         env = Geo3KToolEnvironment(
             config=config,
@@ -48,12 +48,12 @@ class Geo3KToolEnvironment(VLGameEnvironment):
             job_id="geo3k_tool_training_001",
         )
     """
-    
+
     def __init__(
-        self, 
-        config, 
-        data_paths, 
-        val_data_paths=None, 
+        self,
+        config,
+        data_paths,
+        val_data_paths=None,
         job_id=None,
         max_retries: int = 3,
     ):

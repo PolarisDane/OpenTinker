@@ -26,26 +26,33 @@ def main():
     parser.add_argument("--port", type=int, default=8081, help="Server port")
     parser.add_argument("--board_size", type=int, default=9, help="Board size")
     parser.add_argument("--max_total_steps", type=int, default=40, help="Max steps")
-    parser.add_argument("--max_initial_moves", type=int, default=6, help="Max initial moves (0-6)")
-    parser.add_argument("--empty_board_prob", type=float, default=0.2, help="Probability of empty board (0.0-1.0)")
+    parser.add_argument(
+        "--max_initial_moves", type=int, default=6, help="Max initial moves (0-6)"
+    )
+    parser.add_argument(
+        "--empty_board_prob",
+        type=float,
+        default=0.2,
+        help="Probability of empty board (0.0-1.0)",
+    )
     args = parser.parse_args()
-    
-    print(f"\nGomoku Game Configuration:")
+
+    print("\nGomoku Game Configuration:")
     print(f"  Board size: {args.board_size}x{args.board_size}")
     print(f"  Max steps: {args.max_total_steps}")
     print(f"  Max initial moves: {args.max_initial_moves}")
     print(f"  Empty board prob: {args.empty_board_prob}")
-    print(f"\nReward structure:")
+    print("\nReward structure:")
     print(f"  Win: +{GomokuGame.REWARD_WIN}")
     print(f"  Loss: {GomokuGame.REWARD_LOSS}")
     print(f"  Invalid format: {GomokuGame.REWARD_INVALID_FORMAT}")
     print(f"  Timeout: {GomokuGame.REWARD_TIMEOUT}")
-    
+
     if GomokuGameStats:
-        print(f"\nUsing GomokuGameStats for win/loss/draw tracking")
+        print("\nUsing GomokuGameStats for win/loss/draw tracking")
     else:
-        print(f"\nUsing BaseGameStats (GomokuGameStats not available)")
-    
+        print("\nUsing BaseGameStats (GomokuGameStats not available)")
+
     run_game_server(
         game_class=GomokuGame,
         host=args.host,

@@ -43,7 +43,6 @@ freeze_vision_tower: false
 
 # policy loss config
 policy_loss:
-
   # # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.workers.config.PolicyLossConfig
 
@@ -95,13 +94,12 @@ shuffle: false
 
 # checkpoint configs
 checkpoint:
-
   # Target dataclass for this configuration
   _target_: verl.trainer.config.CheckpointConfig
 
   # What to include in saved checkpoints
   # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space
-  save_contents: ['model', 'optimizer', 'extra']
+  save_contents: ["model", "optimizer", "extra"]
 
   # For more flexibility, you can specify the contents to load from the checkpoint.
   # .xxx refers to the local variable xxx from the same level of hierarchy similar to python pkg
@@ -112,7 +110,6 @@ checkpoint:
 
 # optimizer configs
 optim:
-
   # Learning rate
   lr: 1e-6
 
@@ -128,13 +125,11 @@ optim:
   # Prioritized. None, 0 or Negative values mean delegating to lr_warmup_steps_ratio.
   lr_warmup_steps: -1
 
-
 # Whether to use custom fused kernels (e.g., FlashAttention, fused MLP)
 use_fused_kernels: ${oc.select:actor_rollout_ref.model.use_fused_kernels,false}
 
-# profile the actor model in `update_policy` 
+# profile the actor model in `update_policy`
 profiler:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.utils.profiler.ProfilerConfig
 
@@ -144,7 +139,7 @@ profiler:
 
   # whether enable profile on Actor
   enable: False
-  
+
   # Whether to profile all ranks.
   all_ranks: False
 
@@ -156,19 +151,16 @@ profiler:
 
   # specific tool config which only related to the role
   tool_config:
-
     # nsys tool config
     nsys:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.NsightToolConfig
-    
+
       # True for each task has its own database, False for all tasks in one training step share one database.
       discrete: ${oc.select:global_profiler.global_tool_config.nsys.discrete}
-    
+
     # npu config
     npu:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.NPUToolConfig
 
@@ -184,10 +176,9 @@ profiler:
 
       # True for each task has its own database, False for all tasks in one training step share one database.
       discrete: False
-    
+
     # torch profiler config
     torch:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.TorchProfilerToolConfig
 
@@ -201,7 +192,6 @@ profiler:
 
     # torch memory profiler config
     torch_memory:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.TorchMemoryToolConfig
 

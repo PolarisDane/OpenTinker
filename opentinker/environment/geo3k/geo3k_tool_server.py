@@ -19,18 +19,20 @@ def main():
     parser = argparse.ArgumentParser(description="Geo3K Multi-Turn Server")
     parser.add_argument("--host", default="0.0.0.0", help="Server host")
     parser.add_argument("--port", type=int, default=8088, help="Server port")
-    parser.add_argument("--max_retries", type=int, default=3, help="Max verification attempts")
+    parser.add_argument(
+        "--max_retries", type=int, default=3, help="Max verification attempts"
+    )
     args = parser.parse_args()
-    
-    print(f"\nGeo3K Multi-Turn Server Configuration:")
+
+    print("\nGeo3K Multi-Turn Server Configuration:")
     print(f"  Max retries: {args.max_retries}")
-    print(f"\nFeedback format (verl-compatible):")
-    print(f"  'Current parsed answer={{answer}} reward={{0.0|1.0}}'")
-    print(f"\nReward structure:")
+    print("\nFeedback format (verl-compatible):")
+    print("  'Current parsed answer={answer} reward={0.0|1.0}'")
+    print("\nReward structure:")
     print(f"  Correct: +{Geo3KToolGame.REWARD_CORRECT}")
     print(f"  Incorrect: {Geo3KToolGame.REWARD_INCORRECT}")
     print(f"  No improvement penalty: {Geo3KToolGame.PENALTY_NO_IMPROVEMENT}")
-    
+
     run_game_server(
         game_class=Geo3KToolGame,
         host=args.host,

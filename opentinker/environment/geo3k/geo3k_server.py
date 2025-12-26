@@ -24,20 +24,25 @@ def main():
     parser = argparse.ArgumentParser(description="Geo3K Geometry Problem Server")
     parser.add_argument("--host", default="0.0.0.0", help="Server host")
     parser.add_argument("--port", type=int, default=8082, help="Server port")
-    parser.add_argument("--max_retries", type=int, default=0, help="Max retry attempts (0 = single turn)")
+    parser.add_argument(
+        "--max_retries",
+        type=int,
+        default=0,
+        help="Max retry attempts (0 = single turn)",
+    )
     args = parser.parse_args()
-    
-    print(f"\nGeo3K Game Configuration:")
+
+    print("\nGeo3K Game Configuration:")
     print(f"  Max retries: {args.max_retries}")
-    print(f"\nReward structure:")
+    print("\nReward structure:")
     print(f"  Correct: +{Geo3KGame.REWARD_CORRECT}")
     print(f"  Incorrect: {Geo3KGame.REWARD_INCORRECT}")
-    
+
     if Geo3KGameStats:
-        print(f"\nUsing Geo3KGameStats for tracking")
+        print("\nUsing Geo3KGameStats for tracking")
     else:
-        print(f"\nUsing BaseGameStats (Geo3KGameStats not available)")
-    
+        print("\nUsing BaseGameStats (Geo3KGameStats not available)")
+
     run_game_server(
         game_class=Geo3KGame,
         host=args.host,

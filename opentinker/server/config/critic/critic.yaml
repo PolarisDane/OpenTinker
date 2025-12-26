@@ -14,7 +14,6 @@ enable: null
 
 # optimizer configs
 optim:
-
   # Learning rate
   lr: 1e-5
 
@@ -30,10 +29,8 @@ optim:
   # Prioritized. None, 0 or Negative values mean delegating to lr_warmup_steps_ratio.
   lr_warmup_steps: -1
 
-
 # model config for the critic
 model:
-
   # Path to pretrained model weights
   path: ~/models/deepseek-llm-7b-chat
 
@@ -81,13 +78,12 @@ loss_agg_mode: ${oc.select:actor_rollout_ref.actor.loss_agg_mode,token-mean}
 
 # checkpoint configs
 checkpoint:
-
   # Target dataclass for this configuration
   _target_: verl.trainer.config.CheckpointConfig
 
   # What to include in saved checkpoints
   # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space
-  save_contents: ['model', 'optimizer', 'extra']
+  save_contents: ["model", "optimizer", "extra"]
 
   # What to include when loading checkpoints
   load_contents: ${.save_contents}
@@ -97,7 +93,6 @@ checkpoint:
 
 # profile the critic model in `update_critic`
 profiler:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.utils.profiler.ProfilerConfig
 
@@ -119,19 +114,16 @@ profiler:
 
   # specific tool config which only related to the role
   tool_config:
-
     # nsys tool config
     nsys:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.NsightToolConfig
-    
+
       # True for each task has its own database, False for all tasks in one training step share one database.
       discrete: ${oc.select:global_profiler.global_tool_config.nsys.discrete}
-    
+
     # npu config
     npu:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.NPUToolConfig
 
@@ -147,10 +139,9 @@ profiler:
 
       # True for each task has its own database, False for all tasks in one training step share one database.
       discrete: False
-    
+
     # torch profiler config
     torch:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.TorchProfilerToolConfig
 
@@ -164,7 +155,6 @@ profiler:
 
     # torch memory profiler config
     torch_memory:
-
       # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
       _target_: verl.utils.profiler.config.TorchMemoryToolConfig
 
@@ -173,4 +163,3 @@ profiler:
 
       # Stack trace depth for memory allocations
       stack_depth: ${oc.select:global_profiler.global_tool_config.torch_memory.stack_depth,32}
-      

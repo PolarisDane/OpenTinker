@@ -7,7 +7,7 @@ Uses the shared InferencePipeline to run inference on Gomoku games.
 Usage:
     1. Start the game server:
        python opentinker/environment/gomoku/gomoku_server.py
-       
+
     2. Run inference:
        python gomoku_inference.py \
            model_path=/path/to/checkpoint \
@@ -15,26 +15,28 @@ Usage:
 """
 
 import hydra
-from opentinker.environment.inference_pipeline import (
-    InferencePipeline, load_samples, run_inference
-)
+from opentinker.environment.inference_pipeline import run_inference
 from opentinker.environment.gomoku import GomokuGame
 
 
-@hydra.main(config_path="client_config", config_name="gomoku_inference_config.yaml", version_base=None)
+@hydra.main(
+    config_path="client_config",
+    config_name="gomoku_inference_config.yaml",
+    version_base=None,
+)
 def main(args):
     """Run inference on Gomoku games."""
     print("=" * 60)
     print("Gomoku Environment Inference")
     print("=" * 60)
-    
+
     if not args.model_path and not args.get("vllm_server_url"):
         raise ValueError("model_path or vllm_server_url is required")
-    
+
     # Gomoku is multi-turn: max_user_turns should be > 0
     max_user_turns = args.multi_turn.get("max_user_turns", 50)
     max_assistant_turns = args.multi_turn.get("max_assistant_turns", 50)
-    
+
     results = run_inference(
         model_path=args.get("model_path"),
         vllm_server_url=args.get("vllm_server_url"),
@@ -55,7 +57,7 @@ def main(args):
         # GomokuGame kwargs
         board_size=args.get("board_size", 9),
     )
-    
+
     if args.get("output_path"):
         print(f"\nResults saved to: {args.output_path}")
 

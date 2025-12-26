@@ -20,8 +20,8 @@ wandb_key: null
 tokenizer_path: null
 
 # Data paths
-data_path: null        # Path to training data (JSON/JSONL)
-val_data_path: null    # Path to validation data (JSON/JSONL)
+data_path: null # Path to training data (JSON/JSONL)
+val_data_path: null # Path to validation data (JSON/JSONL)
 
 # Training parameters
 batch_size: 64
@@ -45,13 +45,13 @@ algorithm: "agent_loop"
 
 # RL Algorithm settings
 adv_estimator: "grpo"
-rollout_n: 5  # Reduced for LoRA to save memory
+rollout_n: 5 # Reduced for LoRA to save memory
 
 # LoRA configuration (ENABLED)
 # Reference: verl/examples/grpo_trainer/run_qwen2_5-3b_gsm8k_grpo_lora.sh
 lora:
-  lora_rank: 64        # LoRA rank (higher = more capacity, more memory)
-  lora_alpha: 32       # LoRA scaling factor
+  lora_rank: 64 # LoRA rank (higher = more capacity, more memory)
+  lora_alpha: 32 # LoRA scaling factor
   target_modules: "all-linear"
   exclude_modules: null
   lora_adapter_path: null
@@ -70,11 +70,11 @@ interaction:
     max_steps: 1
 
 multi_turn:
-    max_user_turns: 0
-    max_assistant_turns: 1
-    max_tokens_per_turn: 4096
-    weave_project: null
-    experiment_name: "math_lora_interaction"
+  max_user_turns: 0
+  max_assistant_turns: 1
+  max_tokens_per_turn: 4096
+  weave_project: null
+  experiment_name: "math_lora_interaction"
 
 # Scheduler settings
 scheduler_url: "http://0.0.0.0:8780"

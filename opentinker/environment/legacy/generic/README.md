@@ -80,10 +80,10 @@ env_config = env.setup(client)
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `generic_env.py` | Main GenericEnvironment class |
-| `example_usage.py` | Usage examples |
+| File               | Description                   |
+| ------------------ | ----------------------------- |
+| `generic_env.py`   | Main GenericEnvironment class |
+| `example_usage.py` | Usage examples                |
 
 ## Dataset Format
 
@@ -92,11 +92,11 @@ Your training data should include `interaction_kwargs` to specify which interact
 ```json
 {
   "prompt": [
-    {"role": "system", "content": "You are playing a text adventure..."},
-    {"role": "user", "content": "You are in a cave. What do you do?"}
+    { "role": "system", "content": "You are playing a text adventure..." },
+    { "role": "user", "content": "You are in a cave. What do you do?" }
   ],
   "extra_info": {
-    "interaction_kwargs": {"name": "my_env"}
+    "interaction_kwargs": { "name": "my_env" }
   }
 }
 ```

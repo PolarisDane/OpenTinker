@@ -6,7 +6,7 @@ project_name: opentinker
 experiment_name: alfworld_training
 
 # Logging
-logger_backends: ["console","wandb"]
+logger_backends: ["console", "wandb"]
 
 # Tracing (optional)
 enable_tracing: true
@@ -22,19 +22,19 @@ tokenizer_path: null
 batch_size: 4
 num_workers: 4
 # Training duration - set ONE of these (num_steps takes precedence if both set)
-num_epochs: null  # Number of epochs (null = use num_steps)
-num_steps: 1000   # Total training steps (null = use num_epochs)
+num_epochs: null # Number of epochs (null = use num_steps)
+num_steps: 1000 # Total training steps (null = use num_epochs)
 save_freq: 20000
-test_freq: 10     # Validation frequency (every N steps)
+test_freq: 10 # Validation frequency (every N steps)
 
 # Validation parameters
-val_batch_size: 50    # Total validation samples (null = 50)
+val_batch_size: 50 # Total validation samples (null = 50)
 
 # Model parameters
 # Generation parameters
-temperature: 1  # Lower temperature for more focused responses
+temperature: 1 # Lower temperature for more focused responses
 top_p: 1
-max_new_tokens: 8192  # TOTAL response budget for entire multi-turn trajectory (NOT per-turn!)
+max_new_tokens: 8192 # TOTAL response budget for entire multi-turn trajectory (NOT per-turn!)
 max_prompt_tokens: 4096
 
 # Algorithm (must be agent_loop for multi-turn)
@@ -58,21 +58,19 @@ interaction:
     env_host: 0.0.0.0
     env_port: 8092
     env_endpoint: http://${interaction.config.env_host}:${interaction.config.env_port}
-    max_steps: 100  # ALFWorld episodes can be longer
-    max_total_steps: 50  # Max environment step calls
+    max_steps: 100 # ALFWorld episodes can be longer
+    max_total_steps: 50 # Max environment step calls
     observation_template: "{observation}"
     # ALFWorld specific settings
-    split: train  # train, eval_in_distribution, eval_out_of_distribution
-
+    split: train # train, eval_in_distribution, eval_out_of_distribution
 
 multi_turn:
-    max_user_turns: ${interaction.config.max_total_steps}
-    max_assistant_turns: ${interaction.config.max_total_steps}
-    max_tokens_per_turn: 512  # Per-turn response limit (optional, null for no limit)
-    # Weave tracing (optional - runs on SERVER side)
-    weave_project: "zsqzz/alfworld-env-test"
-    experiment_name: "alfworld_interaction"
-
+  max_user_turns: ${interaction.config.max_total_steps}
+  max_assistant_turns: ${interaction.config.max_total_steps}
+  max_tokens_per_turn: 512 # Per-turn response limit (optional, null for no limit)
+  # Weave tracing (optional - runs on SERVER side)
+  weave_project: "zsqzz/alfworld-env-test"
+  experiment_name: "alfworld_interaction"
 
 # Scheduler settings
 scheduler_url: "http://0.0.0.0:8780"

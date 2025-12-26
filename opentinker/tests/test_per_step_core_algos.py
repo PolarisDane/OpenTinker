@@ -62,10 +62,12 @@ class TestComputeTurnBoundaries:
 
     def test_batch(self):
         """Batch of samples with different turn structures."""
-        response_mask = torch.tensor([
-            [1, 1, 1, 0, 0, 0, 0, 0],  # 1 turn
-            [1, 1, 0, 0, 1, 1, 0, 0],  # 2 turns
-        ])
+        response_mask = torch.tensor(
+            [
+                [1, 1, 1, 0, 0, 0, 0, 0],  # 1 turn
+                [1, 1, 0, 0, 1, 1, 0, 0],  # 2 turns
+            ]
+        )
         boundaries = compute_turn_boundaries(response_mask)
         assert len(boundaries) == 2
         assert boundaries[0] == [(0, 3)]
@@ -112,14 +114,14 @@ class TestGrpoPerStepAdvantage:
 
     def test_single_turn_equivalence(self):
         """Single-turn case should be equivalent to standard GRPO.
-        
+
         When there's only one turn per sample, grpo_per_step should produce
         the same advantages as standard grpo (modulo the per-token vs per-sample
         structure).
         """
         batch_size = 4
         response_length = 8
-        
+
         # Create samples from the same group (same uid)
         # With different rewards
         token_level_rewards = torch.zeros(batch_size, response_length)
@@ -128,14 +130,14 @@ class TestGrpoPerStepAdvantage:
         token_level_rewards[1, 4] = 0.5  # Sample 1: score = 0.5
         token_level_rewards[2, 4] = 0.0  # Sample 2: score = 0.0
         token_level_rewards[3, 4] = 0.8  # Sample 3: score = 0.8
-        
+
         # All samples are single-turn (mask = all 1s for response tokens)
         response_mask = torch.zeros(batch_size, response_length)
         response_mask[:, :5] = 1  # 5 response tokens, 3 padding
-        
+
         # All from the same group
         index = np.array(["group1", "group1", "group1", "group1"])
-        
+
         # No turn_scores provided - should fallback to standard GRPO
         advantages, returns = compute_grpo_per_step_advantage(
             token_level_rewards=token_level_rewards,
@@ -144,13 +146,13 @@ class TestGrpoPerStepAdvantage:
             turn_scores=None,
             gamma=1.0,
         )
-        
+
         # Check that advantages are computed
         assert advantages.shape == (batch_size, response_length)
-        
+
         # Advantages should be zero where mask is zero
         assert (advantages[:, 5:] == 0).all()
-        
+
         # Within group, advantages should sum to approximately 0
         # (mean-centered by design)
         total_adv = advantages.sum(dim=1)
@@ -160,28 +162,34 @@ class TestGrpoPerStepAdvantage:
         """Multi-turn case with turn_scores should use per-turn advantages."""
         batch_size = 2
         response_length = 10
-        
+
         # Sample 0: 2 turns, Sample 1: 2 turns
         # Turn structure: [1,1,0,0,1,1,0,0,0,0] for both
-        response_mask = torch.tensor([
-            [1, 1, 0, 0, 1, 1, 0, 0, 0, 0],  # 2 turns
-            [1, 1, 0, 0, 1, 1, 0, 0, 0, 0],  # 2 turns
-        ], dtype=torch.float32)
-        
+        response_mask = torch.tensor(
+            [
+                [1, 1, 0, 0, 1, 1, 0, 0, 0, 0],  # 2 turns
+                [1, 1, 0, 0, 1, 1, 0, 0, 0, 0],  # 2 turns
+            ],
+            dtype=torch.float32,
+        )
+
         # Token-level rewards (for fallback, not used when turn_scores provided)
         token_level_rewards = torch.zeros(batch_size, response_length)
-        
+
         # Turn scores: [r_0, r_1] for each sample
         # Sample 0: [0.0, 1.0] - first turn fails, second succeeds
         # Sample 1: [0.5, 0.5] - both turns moderate
-        turn_scores = np.array([
-            [0.0, 1.0],  # Returns: [1.0, 1.0] with gamma=1.0
-            [0.5, 0.5],  # Returns: [1.0, 0.5] with gamma=1.0
-        ], dtype=object)
-        
+        turn_scores = np.array(
+            [
+                [0.0, 1.0],  # Returns: [1.0, 1.0] with gamma=1.0
+                [0.5, 0.5],  # Returns: [1.0, 0.5] with gamma=1.0
+            ],
+            dtype=object,
+        )
+
         # Same group
         index = np.array(["group1", "group1"])
-        
+
         advantages, returns = compute_grpo_per_step_advantage(
             token_level_rewards=token_level_rewards,
             response_mask=response_mask,
@@ -189,13 +197,13 @@ class TestGrpoPerStepAdvantage:
             turn_scores=turn_scores,
             gamma=1.0,
         )
-        
+
         assert advantages.shape == (batch_size, response_length)
-        
+
         # Advantages should be zero where mask is zero
         assert (advantages[:, 2:4] == 0).all()  # Observation tokens
-        assert (advantages[:, 6:] == 0).all()   # Padding
-        
+        assert (advantages[:, 6:] == 0).all()  # Padding
+
         # Check that turn 1 and turn 2 have different advantages
         # For sample 0: both turns have same cumulative return (1.0)
         # For sample 1: turn 1 return = 1.0, turn 2 return = 0.5
@@ -204,19 +212,25 @@ class TestGrpoPerStepAdvantage:
         """When turn_scores is None, should fallback to standard GRPO."""
         batch_size = 2
         response_length = 6
-        
-        token_level_rewards = torch.tensor([
-            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-            [0.0, 0.5, 0.0, 0.0, 0.0, 0.0],
-        ], dtype=torch.float32)
-        
-        response_mask = torch.tensor([
-            [1, 1, 1, 0, 0, 0],
-            [1, 1, 1, 0, 0, 0],
-        ], dtype=torch.float32)
-        
+
+        token_level_rewards = torch.tensor(
+            [
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=torch.float32,
+        )
+
+        response_mask = torch.tensor(
+            [
+                [1, 1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0, 0],
+            ],
+            dtype=torch.float32,
+        )
+
         index = np.array(["g1", "g1"])
-        
+
         # No turn_scores
         advantages, _ = compute_grpo_per_step_advantage(
             token_level_rewards=token_level_rewards,
@@ -224,7 +238,7 @@ class TestGrpoPerStepAdvantage:
             index=index,
             turn_scores=None,
         )
-        
+
         # Should still compute advantages
         assert advantages.shape == (batch_size, response_length)
         # Standard GRPO: all tokens in a sample get the same advantage
@@ -235,30 +249,30 @@ class TestGrpoPerStepAdvantage:
         """Samples in different groups should be normalized separately."""
         batch_size = 4
         response_length = 4
-        
+
         token_level_rewards = torch.zeros(batch_size, response_length)
         token_level_rewards[0, 2] = 1.0  # Group A
         token_level_rewards[1, 2] = 0.0  # Group A
         token_level_rewards[2, 2] = 0.8  # Group B
         token_level_rewards[3, 2] = 0.2  # Group B
-        
+
         response_mask = torch.ones(batch_size, response_length)
-        
+
         index = np.array(["A", "A", "B", "B"])
-        
+
         advantages, _ = compute_grpo_per_step_advantage(
             token_level_rewards=token_level_rewards,
             response_mask=response_mask,
             index=index,
             turn_scores=None,
         )
-        
+
         # Within group A, advantages should be opposite signs
         # Sample 0 has higher reward, so positive advantage
         # Sample 1 has lower reward, so negative advantage
         assert advantages[0, 0] > 0
         assert advantages[1, 0] < 0
-        
+
         # Same for group B
         assert advantages[2, 0] > 0
         assert advantages[3, 0] < 0

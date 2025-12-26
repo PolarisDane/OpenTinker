@@ -10,7 +10,10 @@ This module provides the environment framework for LLM training, including:
 # Base classes
 from opentinker.environment.environment import BaseEnvironment, RewardFunctionSpec
 from opentinker.environment.base_game import AbstractGame, StepResult, GameDataGenerator
-from opentinker.environment.base_game_environment import GameEnvironment, InteractionSpec
+from opentinker.environment.base_game_environment import (
+    GameEnvironment,
+    InteractionSpec,
+)
 from opentinker.environment.base_data_generator import (
     AbstractGameDataGenerator,
     DynamicGameDataset,

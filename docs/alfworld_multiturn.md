@@ -7,6 +7,7 @@ This example demonstrates training a language model to complete household tasks 
 ## Overview
 
 ALFWorld is a text-based interactive environment for training agents to complete household tasks. Tasks include:
+
 - Pick and place objects
 - Look at objects under light
 - Clean objects and place them
@@ -37,6 +38,7 @@ python -m opentinker.environment.alfworld.alfworld_server \
 ```
 
 **Server Options:**
+
 - `--port`: Server port (default: 8082)
 - `--max_steps`: Max steps per episode (default: 50)
 - `--split`: Dataset split (`train`, `eval_in_distribution`, `eval_out_of_distribution`)
@@ -58,6 +60,7 @@ python opentinker/client/alfworld_rl.py \
 ```
 
 **Training Parameters:**
+
 - `num_steps`: Total training steps (alternative: use `num_epochs`)
 - `batch_size`: Training batch size
 - `val_batch_size`: Validation samples per evaluation
@@ -66,16 +69,17 @@ python opentinker/client/alfworld_rl.py \
 
 ## Reward Structure
 
-| Event | Reward |
-|-------|--------|
-| Task Success | +10.0 |
-| Task Failure | -1.0 |
-| Per Step Penalty | -0.01 |
-| Invalid Action | -0.1 |
+| Event            | Reward |
+| ---------------- | ------ |
+| Task Success     | +10.0  |
+| Task Failure     | -1.0   |
+| Per Step Penalty | -0.01  |
+| Invalid Action   | -0.1   |
 
 ## Example Actions
 
 The agent interacts with the environment using text commands:
+
 - `go to desk 1` - Navigate to a location
 - `take book 1 from desk 1` - Pick up an object
 - `put book 1 in/on shelf 1` - Place an object
@@ -88,4 +92,3 @@ The agent interacts with the environment using text commands:
 ## Configuration Reference
 
 See [`opentinker/client/client_config/alfworld_param.yaml`](../opentinker/client/client_config/alfworld_param.yaml) for full configuration options.
-

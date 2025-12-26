@@ -42,7 +42,13 @@ class SamplingConfig(BaseConfig):
 
 @dataclass
 class MultiTurnConfig(BaseConfig):
-    _mutable_fields = {"max_assistant_turns", "max_user_turns", "max_tokens_per_turn", "weave_project", "experiment_name"}
+    _mutable_fields = {
+        "max_assistant_turns",
+        "max_user_turns",
+        "max_tokens_per_turn",
+        "weave_project",
+        "experiment_name",
+    }
 
     enable: bool = False
     max_assistant_turns: Optional[int] = None
@@ -58,10 +64,10 @@ class MultiTurnConfig(BaseConfig):
     tokenization_sanity_check_mode: str = "strict"
     format: str = "hermes"
     num_repeat_rollouts: Optional[int] = None
-    
+
     # Per-turn token limit (optional, None = no limit)
     max_tokens_per_turn: Optional[int] = None
-    
+
     # Weave tracing (server-side)
     weave_project: Optional[str] = None
     experiment_name: Optional[str] = None
@@ -78,7 +84,9 @@ class AgentLoopConfig(BaseConfig):
     num_workers: int = 8
     default_agent_loop: str = "single_turn_agent"
     agent_loop_config_path: Optional[str] = None
-    custom_async_server: CustomAsyncServerConfig = field(default_factory=CustomAsyncServerConfig)
+    custom_async_server: CustomAsyncServerConfig = field(
+        default_factory=CustomAsyncServerConfig
+    )
 
 
 @dataclass
@@ -190,9 +198,10 @@ class RolloutConfig(BaseConfig):
     def __post_init__(self):
         """Validate the rollout config"""
         if self.expert_parallel_size > 1:
-            assert self.expert_parallel_size == (self.tensor_model_parallel_size * self.data_parallel_size), (
-                "expert_parallel_size must be equal to tensor_model_parallel_size * data_parallel_size"
-            )
+            assert (
+                self.expert_parallel_size
+                == (self.tensor_model_parallel_size * self.data_parallel_size)
+            ), "expert_parallel_size must be equal to tensor_model_parallel_size * data_parallel_size"
 
         if self.pipeline_model_parallel_size > 1:
             if self.name == "vllm" or self.name == "sglang":

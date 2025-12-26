@@ -1,6 +1,5 @@
 # Options for the npu profiler
 options:
-
   # Storage path of collected data.
   save_path: ./profiler_data
 

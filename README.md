@@ -13,7 +13,6 @@
   </p>
 </div>
 
-
 ## 🚀 Quick Start
 
 Choose an example below to get started. Each example includes step-by-step instructions for setup, training, and inference.
@@ -34,17 +33,20 @@ Choose an example below to get started. Each example includes step-by-step instr
 ### 🔹 Common Setup (Client and Server)
 
 #### Clone the Repository
+
 ```bash
 git clone --recurse-submodules https://github.com/open-tinker/OpenTinker.git
 cd OpenTinker
 ```
 
 #### Install OpenTinker
+
 ```bash
 pip install -e .
 ```
 
 #### Install verl (core package)
+
 ```bash
 cd verl
 pip install -e .
@@ -54,7 +56,8 @@ cd ..
 ### 💻 Client Setup
 
 After completing the Common Setup, no additional steps are needed.
-> **Note**  
+
+> **Note**
 > The client currently relies on a small subset of functions from `verl`. This dependency is transitional. In future releases, the client will be fully decoupled from `verl`, allowing it to remain completely lightweight and independent of training-related code.
 
 ### 🧠 Server Setup
@@ -94,9 +97,8 @@ cd ..
 
 This installs all GPU and training-related dependencies required by the server.
 
-⚠️ **Warning**  
+⚠️ **Warning**
 Manual installation may introduce version conflicts. For better stability and reproducibility, we recommend using the Docker-based setup whenever possible.
-
 
 ## 🔐 Authentication
 
@@ -107,7 +109,7 @@ OpenTinker includes a built-in authentication system to secure access to the sch
 Edit `opentinker/scheduler/config/scheduler.yaml`:
 
 ```yaml
-enable_auth: true   # Set to true to enable authentication, false to disable authentication.
+enable_auth: true # Set to true to enable authentication, false to disable authentication.
 user_db_path: "scheduler_users.db"
 ```
 
@@ -119,36 +121,30 @@ Run the interactive script to register a user and get an API key:
 python opentinker/scheduler/register_user_example.py
 ```
 
-
 For advanced usage (REST API registration, using the key) and detailed configuration, see the [Scheduler & Dashboard Guide](opentinker/scheduler/SCHEDULER_GUIDE.md#authentication).
-
-
-
 
 ## 🎮 Environments
 
 OpenTinker provides a flexible environment design framework that supports diverse training scenarios. Our architecture accommodates two orthogonal dimensions:
 
-- **Data Source**: *Data-Dependent* environments load structured datasets (e.g., parquet files) to provide prompts, while *Data-Free* environments generate prompts dynamically from simulators or game engines.
-- **Interaction Mode**: *Single-Turn* environments involve one-shot model responses, while *Multi-Turn* environments enable iterative interactions with tool calls and feedback loops.
+- **Data Source**: _Data-Dependent_ environments load structured datasets (e.g., parquet files) to provide prompts, while _Data-Free_ environments generate prompts dynamically from simulators or game engines.
+- **Interaction Mode**: _Single-Turn_ environments involve one-shot model responses, while _Multi-Turn_ environments enable iterative interactions with tool calls and feedback loops.
 
 This 2×2 design space enables four distinct paradigms, each suited to different learning objectives:
 
-| Paradigm | Data Source | Interaction | Example Use Case |
-|----------|-------------|-------------|------------------|
-| **Data-Dependent × Single-Turn** | Dataset | One-shot | Math reasoning, QA tasks |
-| **Data-Dependent × Multi-Turn** | Dataset | Iterative | Tool-assisted problem solving |
-| **Data-Free × Single-Turn** | Simulator | One-shot | Bandit |
-| **Data-Free × Multi-Turn** | Simulator | Iterative | Complex game playing, dialogue agents |
-
+| Paradigm                         | Data Source | Interaction | Example Use Case                      |
+| -------------------------------- | ----------- | ----------- | ------------------------------------- |
+| **Data-Dependent × Single-Turn** | Dataset     | One-shot    | Math reasoning, QA tasks              |
+| **Data-Dependent × Multi-Turn**  | Dataset     | Iterative   | Tool-assisted problem solving         |
+| **Data-Free × Single-Turn**      | Simulator   | One-shot    | Bandit                                |
+| **Data-Free × Multi-Turn**       | Simulator   | Iterative   | Complex game playing, dialogue agents |
 
 ## 📚 Documentation
 
 - [Scheduler & Dashboard Guide](opentinker/scheduler/SCHEDULER_GUIDE.md) - Configuration, Usage, and Web Dashboard
 
-
-
 ## 📖 Citation
+
 ```
 @misc{opentinker2025,
   title        = {OpenTinker: Democratizing Agentic Reinforcement Learning as a Service},
@@ -158,4 +154,3 @@ This 2×2 design space enables four distinct paradigms, each suited to different
   note         = {GitHub repository}
 }
 ```
-

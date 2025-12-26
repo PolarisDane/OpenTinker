@@ -96,7 +96,6 @@ trust_remote_code: False
 
 # Optional: specify a custom dataset class path and name if overriding default loading behavior.
 custom_cls:
-
   # The path to the file containing your customized dataset class. If not specified, pre-implemented dataset will be used.
   path: null
 
@@ -108,7 +107,6 @@ return_multi_modal_inputs: True
 
 # settings related to data sampler
 sampler:
-
   # the path to the module containing a curriculum class which implements the
   # AbstractSampler interface
   class_path: null
@@ -118,7 +116,6 @@ sampler:
 
 # Data generation configuration for augmenting the dataset.
 datagen:
-
   # The path to the file containing your customized data generation class.
   # E.g. 'pkg://verl.experimental.dynamic_dataset.dynamicgen_dataset'
   path: null

@@ -5,7 +5,7 @@ for LLM RL training.
 
 Usage:
     from opentinker.environment.alfworld import ALFWorldGame
-    
+
     game = ALFWorldGame()
     obs = game.reset()
     result = game.step("go to desk 1")
@@ -14,4 +14,3 @@ Usage:
 from opentinker.environment.alfworld.alfworld_game import ALFWorldGame
 
 __all__ = ["ALFWorldGame"]
-

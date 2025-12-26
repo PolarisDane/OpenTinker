@@ -20,7 +20,7 @@ from verl.tools.base_tool import BaseTool, OpenAIFunctionToolSchema, ToolRespons
 
 class SandboxTool(BaseTool):
     """Client tool to interact with the Sandbox server."""
-    
+
     def __init__(self, config: dict, tool_schema: OpenAIFunctionToolSchema):
         super().__init__(config, tool_schema)
         # Different model may use different code pattern, e.g. python, py, etc.
@@ -42,14 +42,19 @@ class SandboxTool(BaseTool):
             ) as resp:
                 resp.raise_for_status()
                 result = await resp.json()
-                stdout, stderr = result["run_result"]["stdout"], result["run_result"]["stderr"]
+                stdout, stderr = (
+                    result["run_result"]["stdout"],
+                    result["run_result"]["stderr"],
+                )
                 return stdout + stderr
 
     def get_openai_tool_schema(self) -> OpenAIFunctionToolSchema:
         schema = get_json_schema(self.code_interpreter)
         return OpenAIFunctionToolSchema(**schema)
 
-    async def execute(self, instance_id: str, parameters: dict, **kwargs) -> tuple[str, float, dict]:
+    async def execute(
+        self, instance_id: str, parameters: dict, **kwargs
+    ) -> tuple[str, float, dict]:
         code = parameters["code"]
         matches = self.code_pattern.findall(code)
         if matches:
@@ -73,19 +78,18 @@ class SandboxTool(BaseTool):
 if __name__ == "__main__":
     # Example usage - assumes sandbox server is running
     import asyncio
-    
+
     async def test_sandbox_tool():
         sandbox_tool = SandboxTool(
-            config={"sandbox_fusion_url": "http://localhost:8000/run_code"}, 
-            tool_schema=None
+            config={"sandbox_fusion_url": "http://localhost:8000/run_code"},
+            tool_schema=None,
         )
-        
+
         # Test code execution
         test_code = "print('Hello from sandbox!')\nresult = 2 + 2"
         response, reward, info = await sandbox_tool.execute(
-            instance_id="test", 
-            parameters={"code": test_code}
+            instance_id="test", parameters={"code": test_code}
         )
         print(f"Response: {response.text}")
-    
+
     asyncio.run(test_sandbox_tool())

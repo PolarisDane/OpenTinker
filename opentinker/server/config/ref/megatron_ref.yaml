@@ -4,7 +4,7 @@ defaults:
 
   # megatron engine config
   - ../engine@megatron: megatron
-  
+
   # load the reference default config, then apply the fields in the current yaml
   - _self_
 

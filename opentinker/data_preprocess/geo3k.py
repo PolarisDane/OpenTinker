@@ -26,9 +26,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--local_dir", default=None)
     parser.add_argument("--hdfs_dir", default=None)
-    parser.add_argument("--local_dataset_path", default=None, help="The local path to the raw dataset, if it exists.")
     parser.add_argument(
-        "--local_save_dir", default="./data/geo3k", help="The save directory for the preprocessed dataset."
+        "--local_dataset_path",
+        default=None,
+        help="The local path to the raw dataset, if it exists.",
+    )
+    parser.add_argument(
+        "--local_save_dir",
+        default="./data/geo3k",
+        help="The save directory for the preprocessed dataset.",
     )
 
     args = parser.parse_args()
@@ -84,13 +90,19 @@ if __name__ == "__main__":
 
         return process_fn
 
-    train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True, num_proc=8)
-    test_dataset = test_dataset.map(function=make_map_fn("test"), with_indices=True, num_proc=8)
+    train_dataset = train_dataset.map(
+        function=make_map_fn("train"), with_indices=True, num_proc=8
+    )
+    test_dataset = test_dataset.map(
+        function=make_map_fn("test"), with_indices=True, num_proc=8
+    )
 
     hdfs_dir = args.hdfs_dir
     local_save_dir = args.local_dir
     if local_save_dir is not None:
-        print("Warning: Argument 'local_dir' is deprecated. Please use 'local_save_dir' instead.")
+        print(
+            "Warning: Argument 'local_dir' is deprecated. Please use 'local_save_dir' instead."
+        )
     else:
         local_save_dir = args.local_save_dir
 

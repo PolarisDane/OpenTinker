@@ -10,14 +10,14 @@ The scheduler is configured via `opentinker/scheduler/config/scheduler.yaml`.
 
 ```yaml
 # Authentication
-enable_auth: true   # Set to true to require API keys
+enable_auth: true # Set to true to require API keys
 user_db_path: "scheduler_users.db"
 
 # Resources
-available_gpus: [0, 1, 2, 3]  # GPUs to manage
-port_range: null              # null for auto-detect, or [min, max]
-num_ports: 50                 # Number of ports to auto-detect
-scheduler_port: 8765          # Main API port
+available_gpus: [0, 1, 2, 3] # GPUs to manage
+port_range: null # null for auto-detect, or [min, max]
+num_ports: 50 # Number of ports to auto-detect
+scheduler_port: 8765 # Main API port
 ```
 
 ## Authentication
@@ -25,17 +25,22 @@ scheduler_port: 8765          # Main API port
 ### 1. Registering Users
 
 **Method 1: Interactive Script (Recommended)**
+
 ```bash
 python opentinker/scheduler/register_user_example.py
 ```
+
 This script prompts for a username, registers the user, and saves the API key to a local file.
 
 **Method 2: REST API**
+
 ```bash
 # Register a new user
 curl -X POST "http://<scheduler_url>/register?username=<your_username>"
 ```
+
 **Response:**
+
 ```json
 {
   "user_id": "user_abc123",
@@ -44,6 +49,7 @@ curl -X POST "http://<scheduler_url>/register?username=<your_username>"
   "message": "User registered successfully..."
 }
 ```
+
 > ⚠️ **Important**: Save your API key immediately! It cannot be retrieved after registration.
 
 ### 2. Using the API Key
@@ -51,11 +57,13 @@ curl -X POST "http://<scheduler_url>/register?username=<your_username>"
 Include the API key in the `Authorization` header for all requests:
 
 **cURL**:
+
 ```bash
 curl -H "Authorization: Bearer <your_api_key>" http://<scheduler_url>/list_jobs
 ```
 
 **Python**:
+
 ```python
 import requests
 headers = {"Authorization": f"Bearer {api_key}"}
@@ -90,25 +98,28 @@ If `enable_auth` is true in the scheduler config, you must provide an API Key.
 
 Base URL: `http://localhost:<scheduler_port>`
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/submit_job` | Submit a new training job |
-| GET | `/list_jobs` | List all jobs and their status |
-| GET | `/job_status/{job_id}` | Get details for a specific job |
-| DELETE | `/cancel_job/{job_id}` | Cancel a running or queued job |
-| POST | `/complete_job/{job_id}` | Mark a job as completed (called by client) |
-| POST | `/register` | Register a new user (if auth enabled) |
+| Method | Endpoint                 | Description                                |
+| ------ | ------------------------ | ------------------------------------------ |
+| POST   | `/submit_job`            | Submit a new training job                  |
+| GET    | `/list_jobs`             | List all jobs and their status             |
+| GET    | `/job_status/{job_id}`   | Get details for a specific job             |
+| DELETE | `/cancel_job/{job_id}`   | Cancel a running or queued job             |
+| POST   | `/complete_job/{job_id}` | Mark a job as completed (called by client) |
+| POST   | `/register`              | Register a new user (if auth enabled)      |
 
 ## Troubleshooting
 
 ### Job stuck in QUEUED
+
 - Check GPU availability with `nvidia-smi`.
 - Verify the scheduler has free ports in its range.
 
 ### 401 Unauthorized Errors
+
 - Ensure you are providing a valid `Authorization: Bearer <key>` header (API) or have entered the key in the dashboard.
 - If running locally without need for auth, set `enable_auth: false` in `scheduler.yaml`.
 
 ### Server Launch Failures
+
 - Check the scheduler console logs for Python tracebacks.
 - Ensure all dependencies are installed in the environment where the scheduler runs.

@@ -55,28 +55,28 @@ CONFIG_FILES=(
 # 备份并修改配置文件
 for CONFIG_FILE in "${CONFIG_FILES[@]}"; do
     CONFIG_PATH="${CLIENT_CONFIG_DIR}/${CONFIG_FILE}"
-    
+
     if [ ! -f "$CONFIG_PATH" ]; then
         echo -e "${YELLOW}跳过: ${CONFIG_FILE} (文件不存在)${NC}"
         continue
     fi
-    
+
     echo -e "${GREEN}处理: ${CONFIG_FILE}${NC}"
-    
+
     # 创建备份
     BACKUP_PATH="${CONFIG_PATH}.backup.$(date +%Y%m%d_%H%M%S)"
     cp "$CONFIG_PATH" "$BACKUP_PATH"
     echo "  ✓ 备份已创建: $(basename $BACKUP_PATH)"
-    
+
     # 修改 scheduler_url
     sed -i.tmp "s|scheduler_url:.*|scheduler_url: \"http://${SCHEDULER_IP}:${SCHEDULER_PORT}\"|" "$CONFIG_PATH"
-    
+
     # 修改 env_endpoint
     sed -i.tmp "s|env_endpoint:.*|env_endpoint: \"http://${ENV_IP}:${ENV_PORT}\"  # Modified by setup script|" "$CONFIG_PATH"
-    
+
     # 删除临时文件
     rm -f "${CONFIG_PATH}.tmp"
-    
+
     echo "  ✓ 配置已更新"
     echo ""
 done
@@ -89,17 +89,17 @@ echo ""
 
 for CONFIG_FILE in "${CONFIG_FILES[@]}"; do
     CONFIG_PATH="${CLIENT_CONFIG_DIR}/${CONFIG_FILE}"
-    
+
     if [ ! -f "$CONFIG_PATH" ]; then
         continue
     fi
-    
+
     echo -e "${YELLOW}${CONFIG_FILE}:${NC}"
-    
+
     # 显示 scheduler_url
     SCHEDULER_LINE=$(grep "scheduler_url:" "$CONFIG_PATH" | head -1)
     echo "  ${SCHEDULER_LINE}"
-    
+
     # 显示 env_endpoint
     ENV_LINE=$(grep "env_endpoint:" "$CONFIG_PATH" | head -1)
     echo "  ${ENV_LINE}"

@@ -112,7 +112,6 @@ multi_stage_wake_up: false
 
 # Extra inference engine arguments (vllm, sglang), please refer vllm/sglang official doc for detail
 engine_kwargs:
-
   # vllm engine config
   vllm: {}
 
@@ -121,7 +120,6 @@ engine_kwargs:
 
 # Sampling parameters used during validation.
 val_kwargs:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.workers.config.SamplingConfig
 
@@ -143,10 +141,9 @@ val_kwargs:
 
 # Multi-turn interaction config for tools or chat.
 multi_turn:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: opentinker.backend_patch.verl.workers.config.rollout.MultiTurnConfig
-  
+
   # set to True for multi-turn tool interaction tasks; should set rollout.name to sglang as well
   enable: False
 
@@ -198,7 +195,6 @@ calculate_log_probs: False
 
 # [Experimental] agent loop based rollout configs
 agent:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.workers.config.AgentLoopConfig
 
@@ -222,7 +218,6 @@ agent:
 
   # custom async server configs
   custom_async_server:
-
     # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
     _target_: verl.workers.config.CustomAsyncServerConfig
 
@@ -248,7 +243,6 @@ update_weights_bucket_megabytes: 512
 
 # trace rollout data
 trace:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.workers.config.TraceConfig
 
@@ -271,9 +265,8 @@ skip_dump_dir: /tmp/rollout_dump
 # When enabled (True), the rollout assume token in token out for generation
 skip_tokenizer_init: True
 
-# profile the rollout model in `generate_sequence` 
+# profile the rollout model in `generate_sequence`
 profiler:
-
   # Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
   _target_: verl.utils.profiler.ProfilerConfig
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import hydra
-from omegaconf import OmegaConf
 
 from utils.http_training_client import InferenceSchedulerClient
 from utils.scheduler_client_lifecycle import get_lifecycle_manager
@@ -9,25 +8,29 @@ from opentinker.environment.gomoku import GomokuGame
 from opentinker.environment.game_stats_client import GameStatsClient
 
 
-@hydra.main(config_path="client_config", config_name="gomoku_inference_scheduler_config.yaml", version_base=None)
+@hydra.main(
+    config_path="client_config",
+    config_name="gomoku_inference_scheduler_config.yaml",
+    version_base=None,
+)
 def main(args):
     """Run gomoku inference with scheduler-managed vLLM server."""
     lifecycle = get_lifecycle_manager()
-    
+
     print("=" * 60)
     print("Gomoku Inference with Scheduler")
     print("=" * 60)
-    
+
     if not args.model_path:
         raise ValueError("model_path is required")
-    
+
     # 1. Submit inference job to scheduler
     scheduler_client = InferenceSchedulerClient(
         scheduler_url=args.get("scheduler_url", "http://localhost:8780"),
         api_key=args.get("scheduler_api_key"),
     )
-    
-    print(f"Submitting inference job to scheduler...")
+
+    print("Submitting inference job to scheduler...")
     job_result = scheduler_client.submit_inference_job(
         model_path=args.model_path,
         tokenizer_path=args.get("tokenizer_path"),
@@ -37,30 +40,32 @@ def main(args):
         max_model_len=args.get("max_model_len"),
         trust_remote_code=args.get("trust_remote_code", True),
     )
-    
+
     job_id = job_result["job_id"]
     vllm_server_url = job_result["vllm_server_url"]
-    
+
     # Register job for lifecycle cleanup
     lifecycle.register_job(scheduler_client, job_id)
-    
+
     print(f"✓ Inference job {job_id} started at {vllm_server_url}")
-    
+
     # 2. Setup GameStatsClient for per-step metrics (with job_id isolation)
     game_stats = GameStatsClient(args.env_endpoint, job_id=job_id)
     if game_stats.health_check():
         print(f"✓ Connected to game server at {args.env_endpoint}")
         game_stats.reset_all()  # Reset stats for this job before inference
     else:
-        print(f"⚠ Game server not available at {args.env_endpoint}, continuing without stats")
+        print(
+            f"⚠ Game server not available at {args.env_endpoint}, continuing without stats"
+        )
         game_stats = None
-    
+
     # 3. Run inference using the remote vLLM server
     max_user_turns = args.multi_turn.get("max_user_turns", 50)
     max_assistant_turns = args.multi_turn.get("max_assistant_turns", 50)
-    
+
     print(f"Running inference with max_samples={args.get('max_samples', 10)}...")
-    
+
     results = run_inference(
         model_path=None,  # Not needed when using vllm_server_url
         vllm_server_url=vllm_server_url,
@@ -81,7 +86,7 @@ def main(args):
         # GomokuGame kwargs
         board_size=args.get("board_size", 9),
     )
-    
+
     # 4. Log game stats after inference
     if game_stats:
         stats = game_stats.get_all_stats()
@@ -90,10 +95,10 @@ def main(args):
         print(f"  Games completed: {stats.get('games_in_step', 0)}")
         print(f"  Win rate: {stats.get('win_rate', 0):.2%}")
         print(f"  Mean reward: {stats.get('mean_final_reward', 0):.4f}")
-    
+
     if args.get("output_path"):
         print(f"\nResults saved to: {args.output_path}")
-    
+
     print(f"\n{'='*60}")
     print("Inference completed! vLLM server will be automatically cleaned up.")
     print(f"{'='*60}")
@@ -101,4 +106,3 @@ def main(args):
 
 if __name__ == "__main__":
     main()
-

@@ -3,10 +3,10 @@ import base64
 import torch
 import numpy as np
 from typing import Dict, Any
-from verl.trainer.main_ppo import create_rl_dataset, create_rl_sampler
+from verl.trainer.main_ppo import create_rl_dataset
 import os
 from pathlib import Path
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import socket
 import copy
 import warnings
@@ -14,58 +14,70 @@ from collections.abc import Mapping
 
 # ==================== Path Resolution ====================
 
+
 def resolve_path(path: str, original_cwd: str = None) -> str:
     """Resolve a path to absolute path, handling both absolute and relative paths.
-    
+
     This is necessary because Hydra changes the working directory to outputs/YYYY-MM-DD/HH-MM-SS/
     at runtime, causing relative paths to fail.
-    
+
     Args:
         path: Path to resolve (can be absolute or relative)
         original_cwd: Original working directory (if None, attempts to get from Hydra)
-    
+
     Returns:
         Absolute path
     """
     if not path:
         return path
-    
+
     # If already absolute, return as-is
     if os.path.isabs(path):
         return path
-    
+
     # Check if this looks like a HuggingFace model ID (namespace/model_name)
     # HuggingFace IDs: single slash, no common file extensions
     # Examples: "Qwen/Qwen2.5-3B", "meta-llama/Llama-2-7b-hf"
-    if '/' in path:
-        parts = path.split('/')
+    if "/" in path:
+        parts = path.split("/")
         # HuggingFace repo IDs have exactly 2 parts (namespace/model)
         # Check for common file extensions to exclude actual file paths
-        file_extensions = ('.py', '.yaml', '.yml', '.json', '.parquet', '.txt', '.csv', '.bin', '.safetensors')
+        file_extensions = (
+            ".py",
+            ".yaml",
+            ".yml",
+            ".json",
+            ".parquet",
+            ".txt",
+            ".csv",
+            ".bin",
+            ".safetensors",
+        )
         if len(parts) == 2 and not path.endswith(file_extensions):
             # Looks like a HuggingFace model ID, return as-is
             return path
-    
+
     # Get original working directory
     if original_cwd is None:
         try:
             from hydra.utils import get_original_cwd
+
             original_cwd = get_original_cwd()
         except (ImportError, ValueError):
             # Fallback to current directory if not running under Hydra
             original_cwd = os.getcwd()
-    
+
     # Resolve relative path from original working directory
     return str(Path(original_cwd) / path)
 
 
 def resolve_paths_in_config(config: DictConfig, original_cwd: str = None) -> DictConfig:
     """Resolve common path fields in configuration to absolute paths.
-    
+
     Args:
         config: Hydra configuration object
         original_cwd: Original working directory (if None, attempts to get from Hydra)
-    
+
     Returns:
         Modified configuration with resolved paths
     """
@@ -73,25 +85,26 @@ def resolve_paths_in_config(config: DictConfig, original_cwd: str = None) -> Dic
     if original_cwd is None:
         try:
             from hydra.utils import get_original_cwd
+
             original_cwd = get_original_cwd()
         except (ImportError, ValueError):
             original_cwd = os.getcwd()
-    
+
     # List of common path fields to resolve
     path_fields = [
-        'data_path',
-        'val_data_path',
-        'tokenizer_path',
-        'config_path',  # For reward function configs
-        'checkpoint_path',
-        'output_dir',
+        "data_path",
+        "val_data_path",
+        "tokenizer_path",
+        "config_path",  # For reward function configs
+        "checkpoint_path",
+        "output_dir",
     ]
-    
+
     # Resolve each path field if it exists
     for field in path_fields:
         if hasattr(config, field) and config[field] is not None:
             setattr(config, field, resolve_path(config[field], original_cwd))
-    
+
     return config
 
 
@@ -127,14 +140,15 @@ def serialize_dataproto(data: DataProto) -> Dict[str, Any]:
                 "__data__": base64.b64encode(t.tobytes()).decode("utf-8"),
             }
         # Handle PIL Images for VL models
-        elif hasattr(t, 'save') and hasattr(t, 'mode'):
+        elif hasattr(t, "save") and hasattr(t, "mode"):
             # This is a PIL Image
             import io
+
             buffer = io.BytesIO()
             # Convert to RGB if necessary (some formats like RGBA need conversion)
-            if hasattr(t, 'mode') and t.mode in ('RGBA', 'P', 'LA'):
-                t = t.convert('RGB')
-            t.save(buffer, format='PNG')
+            if hasattr(t, "mode") and t.mode in ("RGBA", "P", "LA"):
+                t = t.convert("RGB")
+            t.save(buffer, format="PNG")
             return {
                 "__type__": "PIL.Image",
                 "__mode__": t.mode,
@@ -155,7 +169,7 @@ def serialize_dataproto(data: DataProto) -> Dict[str, Any]:
             return serialize_tensor(obj)
         elif isinstance(obj, np.ndarray) and obj.dtype != object:
             return serialize_tensor(obj)
-        elif hasattr(obj, 'save') and hasattr(obj, 'mode'):
+        elif hasattr(obj, "save") and hasattr(obj, "mode"):
             # PIL Image
             return serialize_tensor(obj)
         else:
@@ -175,7 +189,7 @@ def serialize_dataproto(data: DataProto) -> Dict[str, Any]:
             if v.dtype == object:
                 # Recursively serialize any nested objects (dicts, lists, tensors, PIL Images)
                 data_list = [deep_serialize(item) for item in v.flatten()]
-                
+
                 serialized_non_tensor[k] = {
                     "__type__": "numpy.ndarray",
                     "__dtype__": "object",
@@ -215,7 +229,9 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
             dtype = getattr(torch, dtype_str)
             shape = tuple(obj["__shape__"])
             data_bytes = base64.b64decode(obj["__data__"])
-            array = np.frombuffer(data_bytes, dtype=np.dtype(str(dtype).replace("torch.", ""))).copy()
+            array = np.frombuffer(
+                data_bytes, dtype=np.dtype(str(dtype).replace("torch.", ""))
+            ).copy()
             tensor = torch.from_numpy(array).reshape(shape)
             return tensor.to(dtype)
 
@@ -227,7 +243,7 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
                 for item in data_list:
                     # Recursively deserialize any nested tensors
                     deserialized_list.append(deserialize_tensor(item))
-                
+
                 shape = tuple(obj["__shape__"])
                 array = np.array(deserialized_list, dtype=object).reshape(shape)
                 return array
@@ -237,11 +253,12 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
                 data_bytes = base64.b64decode(obj["__data__"])
                 array = np.frombuffer(data_bytes, dtype=dtype).reshape(shape)
                 return array
-        
+
         # Handle PIL Images for VL models
         elif obj["__type__"] == "PIL.Image":
             from PIL import Image
             import io
+
             data_bytes = base64.b64decode(obj["__data__"])
             buffer = io.BytesIO(data_bytes)
             return Image.open(buffer).copy()  # .copy() to detach from buffer
@@ -277,7 +294,9 @@ def deserialize_dataproto(data_dict: Dict[str, Any]) -> DataProto:
     # Get meta_info
     meta_info = data_dict.get("meta_info", {})
 
-    return DataProto.from_dict(tensors=tensors, non_tensors=non_tensors, meta_info=meta_info)
+    return DataProto.from_dict(
+        tensors=tensors, non_tensors=non_tensors, meta_info=meta_info
+    )
 
 
 def prepare_dataset(data_paths, data_config, tokenizer, is_train=True, max_samples=-1):
@@ -289,8 +308,9 @@ def prepare_dataset(data_paths, data_config, tokenizer, is_train=True, max_sampl
         is_train=is_train,
         max_samples=max_samples,
     )
-    
+
     return dataset
+
 
 def verify_raw_prompt_format(batch_dict):
     if "raw_prompt" not in batch_dict:
@@ -298,45 +318,46 @@ def verify_raw_prompt_format(batch_dict):
             "Dataset must include 'raw_prompt' field for agent_loop mode.\n"
             "Make sure data.return_raw_chat=True in server config."
         )
-    
+
     # Check format of first sample
     raw_prompt = batch_dict["raw_prompt"][0]
     if not isinstance(raw_prompt, (list, np.ndarray)):
-        raise ValueError(
-            f"raw_prompt must be list of messages, got {type(raw_prompt)}"
-        )
-    
+        raise ValueError(f"raw_prompt must be list of messages, got {type(raw_prompt)}")
+
     # If numpy array, convert to list for checking
     if isinstance(raw_prompt, np.ndarray):
         raw_prompt = raw_prompt.tolist()
-    
-    if not all(isinstance(msg, dict) and "role" in msg and "content" in msg for msg in raw_prompt):
+
+    if not all(
+        isinstance(msg, dict) and "role" in msg and "content" in msg
+        for msg in raw_prompt
+    ):
         raise ValueError(
             "raw_prompt messages must have 'role' and 'content' fields.\n"
             f"Got: {raw_prompt[0] if raw_prompt else 'empty'}"
         )
-    
-    print(f"✓ Batch format verified: raw_prompt field present with {len(batch_dict['raw_prompt'])} samples")
+
+    print(
+        f"✓ Batch format verified: raw_prompt field present with {len(batch_dict['raw_prompt'])} samples"
+    )
 
 
 def math_reward_function(data_source, solution_str, ground_truth, extra_info, **kwargs):
     """Custom reward function example.
-    
+
     This is a simple example that gives 1.0 for correct answers, 0.0 otherwise.
     In practice, you would implement more sophisticated logic.
     """
     from verl.utils.reward_score import default_compute_score
-    
+
     score = default_compute_score(data_source, solution_str, ground_truth, extra_info)
     return score
-
 
 
 def find_free_port(host="127.0.0.1"):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, 0))  # 端口 0 表示让 OS 分配
         return s.getsockname()[1]
-
 
 
 def tolerant_merge_dicts(*dicts):
@@ -369,7 +390,9 @@ def tolerant_merge_dicts(*dicts):
 
 if __name__ == "__main__":
     # test serialize and deserialize
-    data = DataProto.from_dict(tensors={"a": torch.tensor([1, 2, 3])}, non_tensors={"b": np.array([4, 5, 6])})
+    data = DataProto.from_dict(
+        tensors={"a": torch.tensor([1, 2, 3])}, non_tensors={"b": np.array([4, 5, 6])}
+    )
     data_dict = serialize_dataproto(data)
     data = deserialize_dataproto(data_dict)
     print(data)
