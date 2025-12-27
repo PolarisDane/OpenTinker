@@ -434,10 +434,13 @@ class ALFWorldGame(AbstractGame):
         self._current_obs = obs
 
         # Get admissible commands
+        # NOTE: Depending on wrappers / TextWorld versions, admissible commands may be
+        # stored either on game_state or inside info dict. If we drop this, the agent
+        # becomes "blind" and often collapses to repetitive actions (e.g., always 'look').
         if hasattr(game_state, "admissible_commands"):
             self._admissible_commands = game_state.admissible_commands or []
         else:
-            self._admissible_commands = []
+            self._admissible_commands = info.get("admissible_commands", [])
 
         # Check for timeout
         if self._step_count >= self.max_steps and not done:

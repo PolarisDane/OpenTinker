@@ -56,7 +56,7 @@ def main():
     parser.add_argument(
         "--num_games",
         type=int,
-        default=100,
+        default=-1,
         help="Number of games to load (-1 = all games, e.g. 64 for faster loading)",
     )
     parser.add_argument(
