@@ -143,13 +143,10 @@ class GymEnvironmentInteraction(BaseInteraction):
 
         # For remote environments, keep a per-instance HTTP session.
         #
-        # Why: when the env server runs with multiple uvicorn workers (multi-process),
-        # each worker has its own in-memory instance registry. If the client creates a
-        # new TCP connection per request, /reset and /step may hit different workers,
-        # causing "Instance ... not found. Call /reset first."
-        #
-        # A dedicated session per instance_id strongly increases connection stickiness
-        # (HTTP keep-alive), so all calls for a trajectory go to the same worker.
+        # Why: when the env server runs in sharded mode (multiple processes on consecutive ports),
+        # each shard has its own in-memory instance registry. The client routes each instance_id
+        # to a stable shard via consistent hashing. A dedicated session per instance_id ensures
+        # all /reset and /step calls for a trajectory go to the same shard.
         self._remote_sessions: dict[str, aiohttp.ClientSession] = {}
         self._remote_timeout = aiohttp.ClientTimeout(total=600000)
 
@@ -351,7 +348,7 @@ class GymEnvironmentInteraction(BaseInteraction):
             if hasattr(env, "close"):
                 env.close()
 
-        # Notify remote game server to return instance to pool
+        # Notify remote game server to clean up instance resources
         if self.env_endpoint is not None or self.env_endpoints is not None:
             try:
                 session = self._get_remote_session(instance_id)

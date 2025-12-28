@@ -625,36 +625,6 @@ class ServiceClient:
             }
         )
 
-        # Add FSDP offload config if present in args
-        if hasattr(args, "fsdp") and args.fsdp:
-            fsdp_cfg = args.fsdp
-            param_offload = fsdp_cfg.get("param_offload", False)
-            optimizer_offload = fsdp_cfg.get("optimizer_offload", False)
-            print(
-                f"[ServiceClient] FSDP config: param_offload={param_offload}, optimizer_offload={optimizer_offload}"
-            )
-            fsdp_override = OmegaConf.create(
-                {
-                    "actor_rollout_ref": {
-                        "actor": {
-                            "fsdp_config": {
-                                "param_offload": param_offload,
-                                "optimizer_offload": optimizer_offload,
-                            }
-                        }
-                    },
-                    "critic": {
-                        "model": {
-                            "fsdp_config": {
-                                "param_offload": param_offload,
-                                "optimizer_offload": optimizer_offload,
-                            }
-                        }
-                    },
-                }
-            )
-            server_cfg = OmegaConf.merge(server_cfg, fsdp_override)
-
         # Add multi_turn config if present in args
         if hasattr(args, "multi_turn") and args.multi_turn:
             multi_turn_cfg = OmegaConf.to_container(args.multi_turn, resolve=True)

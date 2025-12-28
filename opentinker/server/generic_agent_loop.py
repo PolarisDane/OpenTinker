@@ -413,7 +413,7 @@ class GenericAgentLoop(AgentLoopBase):
                     logger.error(f"Invalid state: {state}")
                     state = GenericAgentState.TERMINATED
         finally:
-            # CRITICAL: Always finalize interaction to release resources (e.g. return to pool)
+            # CRITICAL: Always finalize interaction to release resources
             if agent_data.interaction is not None:
                 await agent_data.interaction.finalize_interaction(agent_data.request_id)
 
