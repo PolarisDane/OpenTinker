@@ -138,7 +138,6 @@ def main(cfg):
         logger.info("Agent Loop Mode Enabled")
         logger.info("=" * 60)
 
-        # Set VLLM_USE_V1 for async mode
         os.environ["VLLM_USE_V1"] = "1"
         logger.info("Set VLLM_USE_V1=1 for async rollout")
 
@@ -168,7 +167,23 @@ def main(cfg):
             ):
                 cfg.actor_rollout_ref.rollout.multi_turn.max_user_turns = 10
             cfg.actor_rollout_ref.rollout.multi_turn.format = "hermes"
-            cfg.actor_rollout_ref.rollout.multi_turn.max_parallel_calls = 1
+            # Auto-set max_parallel_calls from env_shards if not explicitly configured
+            if (
+                cfg.actor_rollout_ref.rollout.multi_turn.get("max_parallel_calls", None)
+                is None
+            ):
+                # Try to get env_shards from interaction config
+                env_shards = None
+                if hasattr(cfg, "interaction") and hasattr(cfg.interaction, "config"):
+                    env_shards = cfg.interaction.config.get("env_shards", None)
+                # Fallback to rollout.n or 8
+                default_parallel = (
+                    env_shards or cfg.actor_rollout_ref.rollout.get("n", None) or 1
+                )
+                cfg.actor_rollout_ref.rollout.multi_turn.max_parallel_calls = int(
+                    default_parallel
+                )
+
             cfg.actor_rollout_ref.rollout.multi_turn.max_tool_response_length = 2000
             cfg.actor_rollout_ref.rollout.multi_turn.tool_response_truncate_side = (
                 "right"

@@ -24,6 +24,8 @@ The environment can be either local (imported directly) or remote (via HTTP API)
 
 import logging
 import os
+import zlib
+from urllib.parse import urlparse, urlunparse
 from typing import Any, Optional, Callable
 from uuid import uuid4
 
@@ -44,6 +46,7 @@ class GymEnvironmentInteraction(BaseInteraction):
 
     Configuration options:
         - env_endpoint: HTTP endpoint for remote environment API
+        - env_shards: Number of shards (servers on consecutive ports)
         - env_factory: Callable that creates a local environment instance
         - max_steps: Maximum number of steps per episode
         - observation_template: Template for formatting observations as messages
@@ -56,13 +59,15 @@ class GymEnvironmentInteraction(BaseInteraction):
         - name: gym_env
           class: verl.interactions.gym_environment_interaction.GymEnvironmentInteraction
           config:
-            env_endpoint: "http://localhost:8080"
+            env_endpoint: "http://localhost:8091"
+            env_shards: 8  # Will use ports 8091..8098
             max_steps: 100
     """
 
     def __init__(self, config: dict):
         super().__init__(config)
         self.env_endpoint: Optional[str] = config.get("env_endpoint")
+        self.env_shards: int = int(config.get("env_shards", 1) or 1)
         self.env_factory: Optional[Callable] = config.get("env_factory")
         self.max_steps: int = config.get("max_steps", 100)
         self.observation_template: str = config.get(
@@ -71,11 +76,34 @@ class GymEnvironmentInteraction(BaseInteraction):
         # Job ID for statistics isolation when using shared game servers
         self.job_id: str = config.get("job_id", "default")
 
+        # Generate sharded endpoints if env_shards > 1
+        self.env_endpoints: Optional[list[str]] = None
+        if self.env_endpoint and self.env_shards > 1:
+            parsed = urlparse(self.env_endpoint)
+            if parsed.port:
+                base_port = parsed.port
+                self.env_endpoints = [
+                    urlunparse(parsed._replace(netloc=f"{parsed.hostname}:{base_port + i}"))
+                    for i in range(self.env_shards)
+                ]
+                logger.info(
+                    f"[GymEnvironmentInteraction] Sharded mode: {self.env_shards} shards "
+                    f"on ports {base_port}..{base_port + self.env_shards - 1}"
+                )
+
         # Session storage: maps instance_id to environment state
         self._instance_dict: dict[str, dict[str, Any]] = {}
 
         # For local environments, we can store the env objects
         self._local_envs: dict[str, Any] = {}
+
+    def _get_endpoint(self, instance_id: str) -> str:
+        """Get the endpoint for this instance_id (supports sharding)."""
+        if self.env_endpoints:
+            # Sharded mode: hash instance_id to pick shard
+            idx = zlib.crc32(instance_id.encode("utf-8")) % len(self.env_endpoints)
+            return self.env_endpoints[idx]
+        return self.env_endpoint
 
     async def start_interaction(
         self, instance_id: Optional[str] = None, **kwargs
@@ -208,55 +236,6 @@ class GymEnvironmentInteraction(BaseInteraction):
             if hasattr(env, "close"):
                 env.close()
 
-    # #Note(Siqi): this will likely cause a bug
-    # async def mark_truncated(self, instance_id: str, reason: str = "external_limit", **kwargs) -> None:
-    #     """Mark a game as done due to external truncation (e.g., response_length limit).
-
-    #     This ensures the game server records the game as completed even when
-    #     GenericAgentLoop terminates early due to external limits rather than
-    #     the environment returning done=True.
-
-    #     Args:
-    #         instance_id: The trajectory instance ID
-    #         reason: Reason for truncation (for logging/debugging)
-    #         **kwargs: Additional arguments
-    #     """
-
-    #     if instance_id not in self._instance_dict:
-    #         return
-
-    #     instance_data = self._instance_dict[instance_id]
-
-    #     # If already done, no need to mark again
-    #     if instance_data.get("done", False):
-    #         return
-
-    #     # Mark as done locally
-    #     instance_data["done"] = True
-
-    #     # Notify remote game server if using remote environment
-    #     if self.env_endpoint is not None:
-    #         try:
-    #             async with aiohttp.ClientSession() as session:
-    #                 # Call /step with a special truncation action to mark the game as done
-    #                 # This lets the game server record the game as completed
-    #                 async with session.post(
-    #                     f"{self.env_endpoint}/step",
-    #                     json={
-    #                         "instance_id": instance_id,
-    #                         "action": f"[TRUNCATED: {reason}]",
-    #                         "truncated": True,  # Optional flag for game server
-    #                     },
-    #                     timeout=aiohttp.ClientTimeout(total=600000)
-    #                 ) as response:
-    #                     if response.status == 200:
-    #                         data = await response.json()
-    #                     else:
-    #                         logger.warning(f"[mark_truncated] Failed to notify server: {response.status}")
-    #         except Exception as e:
-    #             # Don't fail the training just because we couldn't notify the game server
-    #             logger.warning(f"[mark_truncated] Error notifying server: {e}")
-
     def _extract_action(self, messages: list[dict[str, Any]]) -> str:
         """Extract the action from the last assistant message.
 
@@ -286,9 +265,10 @@ class GymEnvironmentInteraction(BaseInteraction):
 
         elif self.env_endpoint is not None:
             # Remote environment via HTTP
+            endpoint = self._get_endpoint(instance_id)
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.env_endpoint}/reset",
+                    f"{endpoint}/reset",
                     json={"instance_id": instance_id, "job_id": self.job_id, **kwargs},
                     timeout=aiohttp.ClientTimeout(total=600000),
                 ) as response:
@@ -323,9 +303,10 @@ class GymEnvironmentInteraction(BaseInteraction):
 
         elif self.env_endpoint is not None:
             # Remote environment via HTTP
+            endpoint = self._get_endpoint(instance_id)
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.env_endpoint}/step",
+                    f"{endpoint}/step",
                     json={
                         "instance_id": instance_id,
                         "job_id": self.job_id,
