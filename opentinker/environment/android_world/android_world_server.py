@@ -64,6 +64,13 @@ def main():
     # Per-shard emulator ports (set automatically when launching shards)
     parser.add_argument("--emulator_console_port", type=int, default=None, help="(Internal) Console port for this shard")
     parser.add_argument("--emulator_grpc_port", type=int, default=None, help="(Internal) gRPC port for this shard")
+    parser.add_argument(
+        "--task_set_config",
+        type=str,
+        default=None,
+        help="Path to task_sets.yaml for split-aware task sampling. "
+             "When provided, --split determines which task list is used.",
+    )
     args = parser.parse_args()
 
     # Import here to avoid issues with multiprocessing
@@ -116,6 +123,8 @@ def main():
                 ]
                 if args.config_path is not None:
                     cmd.extend(["--config_path", args.config_path])
+                if args.task_set_config is not None:
+                    cmd.extend(["--task_set_config", args.task_set_config])
 
                 children.append(subprocess.Popen(cmd))
                 time.sleep(0.2)
@@ -165,6 +174,7 @@ def main():
         num_games=args.num_games,
         emulator_console_port=console_port,
         emulator_grpc_port=grpc_port,
+        task_set_config=args.task_set_config,
     )
 
 

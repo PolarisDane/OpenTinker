@@ -186,7 +186,8 @@ case "$1" in
             --emulator_base_console_port $EMULATOR_BASE_CONSOLE_PORT \
             --emulator_base_grpc_port $EMULATOR_BASE_GRPC_PORT \
             --split train \
-            --max_steps 50
+            --max_steps 50 \
+            --task_set_config opentinker/environment/android_world/task_sets.yaml
         ;;
 
     client|4)
@@ -217,10 +218,80 @@ case "$1" in
             interaction.config.env_shards=$NUM_EMULATORS
         ;;
 
+    eval)
+        # =====================================================================
+        # Evaluation: runs ID and OOD test sets
+        # =====================================================================
+        EVAL_SPLIT="${EVAL_SPLIT:-test_id test_ood}"
+        EVAL_INSTANCES="${EVAL_INSTANCES:-3}"
+        EVAL_MAX_STEPS="${EVAL_MAX_STEPS:-30}"
+        EVAL_SEED="${EVAL_SEED:-42}"
+        EVAL_OUTPUT="${EVAL_OUTPUT:-./eval_results}"
+        # Checkpoint / model to evaluate (optional)
+        EVAL_MODEL_PATH="${EVAL_MODEL_PATH:-}"
+        EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-}"
+        EVAL_VLLM_SERVER_URL="${EVAL_VLLM_SERVER_URL:-}"
+        EVAL_TENSOR_PARALLEL_SIZE="${EVAL_TENSOR_PARALLEL_SIZE:-1}"
+        EVAL_GPU_MEM_UTIL="${EVAL_GPU_MEM_UTIL:-0.9}"
+        EVAL_TEMPERATURE="${EVAL_TEMPERATURE:-0.0}"
+        EVAL_MAX_TOKENS="${EVAL_MAX_TOKENS:-4096}"
+        echo "========================================"
+        echo "Running Android World Evaluation"
+        echo "  Splits: $EVAL_SPLIT"
+        echo "  Instances per task: $EVAL_INSTANCES"
+        echo "  Max steps: $EVAL_MAX_STEPS"
+        echo "  Seed: $EVAL_SEED"
+        echo "  Output: $EVAL_OUTPUT"
+        if [ -n "$EVAL_MODEL_PATH" ]; then
+            echo "  Model: $EVAL_MODEL_PATH"
+        elif [ -n "$EVAL_VLLM_SERVER_URL" ]; then
+            echo "  vLLM Server: $EVAL_VLLM_SERVER_URL"
+        else
+            echo "  Model: (none — dummy agent)"
+        fi
+        echo "========================================"
+
+        # Build optional model arguments
+        MODEL_ARGS=""
+        if [ -n "$EVAL_MODEL_PATH" ]; then
+            MODEL_ARGS="$MODEL_ARGS --model_path $EVAL_MODEL_PATH"
+        fi
+        if [ -n "$EVAL_TOKENIZER_PATH" ]; then
+            MODEL_ARGS="$MODEL_ARGS --tokenizer_path $EVAL_TOKENIZER_PATH"
+        fi
+        if [ -n "$EVAL_VLLM_SERVER_URL" ]; then
+            MODEL_ARGS="$MODEL_ARGS --vllm_server_url $EVAL_VLLM_SERVER_URL"
+        fi
+        MODEL_ARGS="$MODEL_ARGS --tensor_parallel_size $EVAL_TENSOR_PARALLEL_SIZE"
+        MODEL_ARGS="$MODEL_ARGS --gpu_memory_utilization $EVAL_GPU_MEM_UTIL"
+        MODEL_ARGS="$MODEL_ARGS --temperature $EVAL_TEMPERATURE"
+        MODEL_ARGS="$MODEL_ARGS --max_tokens $EVAL_MAX_TOKENS"
+
+        python opentinker/environment/android_world/run_eval.py \
+            --split $EVAL_SPLIT \
+            --n_instances $EVAL_INSTANCES \
+            --max_steps $EVAL_MAX_STEPS \
+            --seed $EVAL_SEED \
+            --output_dir $EVAL_OUTPUT \
+            --emulator_console_port $EMULATOR_BASE_CONSOLE_PORT \
+            --emulator_grpc_port $EMULATOR_BASE_GRPC_PORT \
+            $MODEL_ARGS
+        ;;
+
+    eval-validate)
+        # =====================================================================
+        # Validate task_sets.yaml config (no emulator needed)
+        # =====================================================================
+        echo "========================================"
+        echo "Validating Android World Task Set Config"
+        echo "========================================"
+        python opentinker/environment/android_world/run_eval.py --validate_only
+        ;;
+
     *)
         echo "AndroidWorld Training Script (Multi-Turn, Multi-Emulator)"
         echo ""
-        echo "Usage: $0 {setup-avds|scheduler|simulator|env|client}"
+        echo "Usage: $0 {setup-avds|scheduler|simulator|env|client|eval|eval-validate}"
         echo "       $0 {1|2|3|4}"
         echo ""
         echo "=== First Time Setup ==="
@@ -232,7 +303,24 @@ case "$1" in
         echo "  Terminal 3: $0 env         # Start $NUM_EMULATORS env server shards (ports $ENV_PORT..$((ENV_PORT+NUM_EMULATORS-1)))"
         echo "  Terminal 4: $0 client      # Start RL training client"
         echo ""
-        echo "Multi-Emulator Configuration (env vars):"
+        echo "=== For Evaluation ==="
+        echo "  $0 eval                    # Run ID + OOD evaluation (needs running emulator)"
+        echo "  $0 eval-validate           # Validate task_sets.yaml (no emulator needed)"
+        echo ""
+        echo "Evaluation Configuration (env vars):"
+        echo "  EVAL_MODEL_PATH=<path>     # Checkpoint or model to evaluate (e.g., ckpt/step_100/)"
+        echo "  EVAL_TOKENIZER_PATH=<path> # Tokenizer path (defaults to EVAL_MODEL_PATH)"
+        echo "  EVAL_VLLM_SERVER_URL=<url> # vLLM server URL (alternative to local model)"
+        echo "  EVAL_TENSOR_PARALLEL_SIZE=1  # Tensor parallelism for local model"
+        echo "  EVAL_GPU_MEM_UTIL=0.9      # GPU memory fraction"
+        echo "  EVAL_TEMPERATURE=0.0       # Sampling temperature (0=greedy)"
+        echo "  EVAL_MAX_TOKENS=4096       # Max tokens per action"
+        echo "  EVAL_SPLIT='test_id test_ood'  # Splits to evaluate"
+        echo "  EVAL_INSTANCES=3           # Instances per task"
+        echo "  EVAL_MAX_STEPS=30          # Max steps per episode"
+        echo "  EVAL_SEED=42               # Random seed"
+        echo ""
+        echo "Emulator Configuration (env vars):"
         echo "  NUM_EMULATORS=$NUM_EMULATORS        # Number of parallel emulators"
         echo "  AVD_NAME=$AVD_NAME            # AVD base name (creates ${AVD_NAME}_0, ${AVD_NAME}_1, ...)"
         echo "  EMULATOR_BASE_CONSOLE_PORT=$EMULATOR_BASE_CONSOLE_PORT   # Base console port"

@@ -1,0 +1,100 @@
+# ============================================================================
+# Android World Task Set Configuration
+# ============================================================================
+# Defines training and evaluation task splits for reproducible experiments.
+#
+# Split design:
+#   - train:    Tasks used during RL training. The model learns from these.
+#   - test_id:  In-Distribution test. SAME task types as train, evaluated with
+#               different random params/seeds. Measures generalization within
+#               known task types.
+#   - test_ood: Out-of-Distribution test. COMPLETELY DIFFERENT task types not
+#               seen during training. Measures transfer to novel tasks.
+#
+# You can customize the splits by editing the task lists below.
+# Task names must match class names in android_world.registry.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Training Tasks
+# ---------------------------------------------------------------------------
+# Core tasks spanning multiple app categories for broad training coverage.
+# Includes: Contacts, Calendar, SMS, Markor (notes), System, Expense, Files
+train:
+  tasks:
+    # Contacts (1)
+    - ContactsAddContact
+    # Calendar (1)
+    - SimpleCalendarAddOneEvent
+    # SMS (1)
+    - SimpleSmsSend
+    # Markor (1)
+    - MarkorCreateNote
+    # System (2)
+    - OpenAppTaskEval
+    - SystemWifiTurnOn
+    # Expense (1)
+    - ExpenseAddSingle
+    # Files (1)
+    - FilesDeleteFile
+
+
+# ---------------------------------------------------------------------------
+# In-Distribution Test Tasks (test_id)
+# ---------------------------------------------------------------------------
+# Same task TYPES as training, but evaluation uses fresh random parameters.
+# By default mirrors the train set. Override with a subset if desired.
+test_id:
+  # If use_train_tasks is true, test_id uses the same task list as train.
+  # The difference is only in random parameters/seeds during evaluation.
+  use_train_tasks: true
+  # Optionally specify a subset of train tasks for faster ID evaluation:
+  tasks: []
+
+
+# ---------------------------------------------------------------------------
+# Out-of-Distribution Test Tasks (test_ood)
+# ---------------------------------------------------------------------------
+# Novel task types NOT present in the training set.
+# Tests generalization and transfer to unseen apps/interaction patterns.
+test_ood:
+  tasks:
+    # Calendar - advanced (1)
+    - SimpleCalendarAddRepeatingEvent
+    # Markor - advanced (1)
+    - MarkorChangeNoteContent
+    # Composite (1)
+    - TurnOffWifiAndTurnOnBluetooth
+    # SMS - advanced (1)
+    - SimpleSmsSendClipboardContent
+    # Expense - advanced (1)
+    - ExpenseAddMultiple
+    # Recipe (1)
+    - RecipeAddSingleRecipe
+    # Browser (1)
+    - BrowserMultiply
+    # Audio Recorder (1)
+    - AudioRecorderRecordAudio
+    # Camera (1)
+    - CameraTakePhoto
+    # Clock (1)
+    - ClockTimerEntry
+    # System Verify (1)
+    - SystemWifiTurnOnVerify
+    # OsmAnd (1)
+    - OsmAndFavorite
+    # Retro Music (1)
+    - RetroCreatePlaylist
+    # Drawing (1)
+    - SimpleDrawProCreateDrawing
+    # VLC (1)
+    - VlcCreatePlaylist
+
+
+# ---------------------------------------------------------------------------
+# Global evaluation settings
+# ---------------------------------------------------------------------------
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

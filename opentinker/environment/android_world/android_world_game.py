@@ -10,6 +10,7 @@ import logging
 
 from opentinker.environment.base_game import AbstractGame, StepResult
 from opentinker.environment.android_world import prompts
+from opentinker.environment.android_world.task_set_config import TaskSetConfig
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,14 @@ class AndroidWorldGame(AbstractGame):
     # Limits
     DEFAULT_MAX_STEPS = 20
 
-    # Task types in AndroidWorld
+    # Task types in AndroidWorld (fallback if no TaskSetConfig provided)
     ALL_TASK_TYPES = [
         "ContactsAddContact",
     ]
     
     _shared_envs: dict = {}
     _use_shared_env: bool = False
+    _task_set_config: Optional[TaskSetConfig] = None
 
     _cached_game_paths: Dict[str, List[str]] = {}
     _cache_lock = threading.Lock()
@@ -81,19 +83,56 @@ class AndroidWorldGame(AbstractGame):
         use_shared_env: bool = False,
         emulator_console_port: Optional[int] = None,
         emulator_grpc_port: Optional[int] = None,
+        task_set_config: Optional[str] = None,
     ):
         """Initialize AndroidWorld game.
         
         Args:
             emulator_console_port: Emulator console port (default: from ANDROID_CONSOLE_PORT env or 5556)
             emulator_grpc_port: Emulator gRPC port (default: from ANDROID_GRPC_PORT env or 8554)
+            task_set_config: Path to task_sets.yaml for split-aware sampling.
+                             When provided, 'task_types' and 'split' are used
+                             together to load the correct task list from config.
         """
         self.config_path = config_path
         self.max_steps = max_steps
-        self.task_types = task_types or self.ALL_TASK_TYPES
         self.split = split
         self.num_games = num_games
         self._use_shared_env = use_shared_env
+
+        # Load task set config if provided
+        if task_set_config:
+            try:
+                self._task_set_config = TaskSetConfig(task_set_config)
+                logger.info(f"Loaded TaskSetConfig from {task_set_config}")
+            except Exception as e:
+                logger.warning(f"Failed to load TaskSetConfig: {e}. Using fallback.")
+                self._task_set_config = None
+        else:
+            # Try to load default config
+            try:
+                self._task_set_config = TaskSetConfig()
+                logger.info("Loaded default TaskSetConfig")
+            except FileNotFoundError:
+                self._task_set_config = None
+
+        # Resolve task list: explicit > config > fallback
+        if task_types:
+            self.task_types = task_types
+        elif self._task_set_config:
+            # Map split names to config split names
+            split_map = {
+                "train": "train",
+                "eval_in_distribution": "test_id",
+                "eval_out_of_distribution": "test_ood",
+                "test_id": "test_id",
+                "test_ood": "test_ood",
+            }
+            config_split = split_map.get(split, "train")
+            self.task_types = self._task_set_config.get_tasks(config_split)
+            logger.info(f"Using {len(self.task_types)} tasks from config split '{config_split}'")
+        else:
+            self.task_types = self.ALL_TASK_TYPES
         
         # Emulator ports (can be set per-shard for multi-emulator support)
         self._emulator_console_port = emulator_console_port

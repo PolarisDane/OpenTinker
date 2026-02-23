@@ -94,6 +94,134 @@ See [`opentinker/client/client_config/android_world_param.yaml`](../opentinker/c
 
 ---
 
+## Evaluation & Task Splits (ID / OOD)
+
+The framework provides **independent train/test task splits** to properly measure in-distribution (ID) and out-of-distribution (OOD) generalization.
+
+### Task Split Design
+
+| Split | Purpose | Tasks |
+|-------|---------|-------|
+| **train** | RL training | 28 tasks: Contacts, Calendar, SMS, Markor (basic), System, Expense (basic), Files |
+| **test_id** | In-Distribution eval | Same task *types* as train, fresh random parameters |
+| **test_ood** | Out-of-Distribution eval | 60+ task types NOT seen during training (Recipe, Browser, Camera, Clock, OsmAnd, RetroMusic, VLC, composites, etc.) |
+
+The config file is at [`opentinker/environment/android_world/task_sets.yaml`](../opentinker/environment/android_world/task_sets.yaml).
+
+### Running Evaluation
+
+**1. Validate config (no emulator needed):**
+```bash
+bash opentinker/scripts/run_android.sh eval-validate
+```
+
+**2. Run ID + OOD evaluation:**
+```bash
+# Requires running emulator
+bash opentinker/scripts/run_android.sh eval
+```
+
+**3. Run evaluation with custom settings:**
+```bash
+EVAL_SPLIT="test_ood" EVAL_INSTANCES=5 EVAL_MAX_STEPS=30 \
+    bash opentinker/scripts/run_android.sh eval
+```
+
+**4. Run eval script directly:**
+```bash
+python opentinker/environment/android_world/run_eval.py \
+    --split test_id test_ood \
+    --n_instances 3 \
+    --max_steps 30 \
+    --seed 42 \
+    --output_dir ./eval_results
+```
+
+**5. Recompute metrics from saved results:**
+```bash
+python opentinker/environment/android_world/run_eval.py \
+    --from_json eval_results/eval_test_ood_1708000000.json
+```
+
+### Evaluation Metrics
+
+The evaluator reports:
+
+| Metric | Description |
+|--------|-------------|
+| **Success Rate** | Fraction of episodes where the task was completed successfully |
+| **Avg Steps (all)** | Average number of steps across all episodes |
+| **Avg Steps (success)** | Average steps for successful episodes only |
+| **Median Steps (success)** | Median steps for successful episodes |
+| **Avg Reward** | Mean cumulative reward per episode |
+| **Timeout Rate** | Fraction of episodes that hit the max step limit |
+| **Avg Invalid Actions** | Mean number of invalid action penalties per episode |
+| **Error Rate** | Fraction of episodes with runtime errors |
+| **Per-Category Breakdown** | Metrics grouped by app category (Calendar, SMS, etc.) |
+| **Per-Task Success Rate** | Success rate for each individual task type |
+
+### Training with Task Set Config
+
+The training env server now supports `--task_set_config` to ensure training only samples from the train split:
+
+```bash
+python opentinker/environment/android_world/android_world_server.py \
+    --port 8092 \
+    --shards 4 \
+    --split train \
+    --task_set_config opentinker/environment/android_world/task_sets.yaml
+```
+
+### Customizing Task Splits
+
+Edit `opentinker/environment/android_world/task_sets.yaml`:
+
+```yaml
+train:
+  tasks:
+    - ContactsAddContact
+    - SimpleSmsSend
+    # ... add your training tasks
+
+test_ood:
+  tasks:
+    - RecipeAddSingleRecipe
+    - BrowserDraw
+    # ... add your OOD test tasks
+
+eval_settings:
+  n_instances_per_task: 3   # instances per task type
+  max_steps: 30             # max steps per episode
+  seed: 42                  # reproducibility
+```
+
+### Programmatic Usage
+
+```python
+from opentinker.environment.android_world import TaskSetConfig, AndroidWorldEvaluator
+
+# Load config
+config = TaskSetConfig("opentinker/environment/android_world/task_sets.yaml")
+print(config.summary())
+
+# Get task lists
+train_tasks = config.get_tasks("train")      # 28 tasks
+test_id = config.get_tasks("test_id")        # same types, fresh params
+test_ood = config.get_tasks("test_ood")      # 60+ novel tasks
+
+# Sample for training
+task = config.sample_task("train")
+
+# Run evaluation
+game = AndroidWorldGame(task_types=test_ood, max_steps=30)
+evaluator = AndroidWorldEvaluator(game, config, split="test_ood", agent_fn=my_agent)
+results = evaluator.run()
+print(results.summary())
+results.save("./eval_results")
+```
+
+---
+
 ## Detailed Environment Setup
 
 ### 1. Android SDK & Command Line Tools
