@@ -1,0 +1,300 @@
+# ============================================================================
+# Android World — Complete Task Set Configuration  (116 tasks)
+# ============================================================================
+# All tasks from android_world.registry (91 Android + 25 Information Retrieval),
+# organised as test_ood and grouped by app category and difficulty.
+#
+# Difficulty levels:
+#   easy   — Single-step or straightforward operations (create, toggle, open).
+#   medium — Multi-step workflows, verification tasks, relative-date logic,
+#            delete-with-constraints, or moderate cross-app interaction.
+#   hard   — Cross-app data transfer, image/video processing, duplicate
+#            detection with noise, or composite multi-app tasks.
+#
+# The train / test_id splits are kept empty so that ALL tasks appear only in
+# test_ood for comprehensive evaluation.
+# ============================================================================
+
+
+# ---------------------------------------------------------------------------
+# Training Tasks  (empty — this config is for full evaluation only)
+# ---------------------------------------------------------------------------
+train:
+  tasks: []
+
+
+# ---------------------------------------------------------------------------
+# In-Distribution Test  (empty — not used in this config)
+# ---------------------------------------------------------------------------
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+
+# ---------------------------------------------------------------------------
+# Out-of-Distribution Test — ALL 116 tasks grouped by app & difficulty
+# ---------------------------------------------------------------------------
+test_ood:
+  tasks:
+
+    # =======================================================================
+    #  AUDIO RECORDER  (2 tasks)
+    # =======================================================================
+    # --- easy ---
+    - AudioRecorderRecordAudio
+    # --- medium ---
+    - AudioRecorderRecordAudioWithFileName
+
+    # =======================================================================
+    #  BROWSER  (3 tasks)
+    # =======================================================================
+    # --- easy ---
+    - BrowserMultiply
+    # --- medium ---
+    - BrowserDraw
+    # --- hard ---
+    - BrowserMaze
+
+    # =======================================================================
+    #  CALENDAR — Simple Calendar  (8 tasks)
+    # =======================================================================
+    # --- easy ---
+    - SimpleCalendarAddOneEvent
+    - SimpleCalendarAddOneEventTomorrow
+    - SimpleCalendarAddOneEventInTwoWeeks
+    - SimpleCalendarDeleteOneEvent
+    # --- medium ---
+    - SimpleCalendarAddOneEventRelativeDay
+    - SimpleCalendarAddRepeatingEvent
+    - SimpleCalendarDeleteEvents
+    - SimpleCalendarDeleteEventsOnRelativeDay
+
+    # =======================================================================
+    #  CAMERA  (2 tasks)
+    # =======================================================================
+    # --- easy ---
+    - CameraTakePhoto
+    - CameraTakeVideo
+
+    # =======================================================================
+    #  CLOCK  (3 tasks)
+    # =======================================================================
+    # --- easy ---
+    - ClockStopWatchRunning
+    - ClockTimerEntry
+    # --- medium ---
+    - ClockStopWatchPausedVerify
+
+    # =======================================================================
+    #  CONTACTS  (2 tasks)
+    # =======================================================================
+    # --- easy ---
+    - ContactsAddContact
+    - ContactsNewContactDraft
+
+    # =======================================================================
+    #  EXPENSE  (9 tasks)
+    # =======================================================================
+    # --- easy ---
+    - ExpenseAddSingle
+    - ExpenseDeleteSingle
+    # --- medium ---
+    - ExpenseAddMultiple
+    - ExpenseDeleteMultiple
+    - ExpenseDeleteMultiple2
+    - ExpenseDeleteDuplicates
+    - ExpenseDeleteDuplicates2
+    # --- hard ---
+    - ExpenseAddMultipleFromGallery
+    - ExpenseAddMultipleFromMarkor
+
+    # =======================================================================
+    #  FILES  (2 tasks)
+    # =======================================================================
+    # --- easy ---
+    - FilesDeleteFile
+    # --- medium ---
+    - FilesMoveFile
+
+    # =======================================================================
+    #  MARKOR  (13 tasks)
+    # =======================================================================
+    # --- easy ---
+    - MarkorCreateNote
+    - MarkorCreateFolder
+    - MarkorDeleteNote
+    - MarkorDeleteAllNotes
+    # --- medium ---
+    - MarkorAddNoteHeader
+    - MarkorChangeNoteContent
+    - MarkorCreateNoteFromClipboard
+    - MarkorDeleteNewestNote
+    - MarkorEditNote
+    - MarkorMoveNote
+    # --- hard ---
+    - MarkorMergeNotes
+    - MarkorTranscribeReceipt
+    - MarkorTranscribeVideo
+
+    # =======================================================================
+    #  MARKOR + SMS  (composite)  (1 task)
+    # =======================================================================
+    # --- hard ---
+    - MarkorCreateNoteAndSms
+
+    # =======================================================================
+    #  OSMAND  (3 tasks)
+    # =======================================================================
+    # --- medium ---
+    - OsmAndFavorite
+    - OsmAndMarker
+    - OsmAndTrack
+
+    # =======================================================================
+    #  RECIPE  (13 tasks)
+    # =======================================================================
+    # --- easy ---
+    - RecipeAddSingleRecipe
+    - RecipeDeleteSingleRecipe
+    # --- medium ---
+    - RecipeAddMultipleRecipes
+    - RecipeDeleteMultipleRecipes
+    - RecipeDeleteDuplicateRecipes
+    - RecipeDeleteDuplicateRecipes2
+    - RecipeDeleteDuplicateRecipes3
+    - RecipeDeleteSingleWithRecipeWithNoise
+    # --- hard ---
+    - RecipeAddMultipleRecipesFromImage
+    - RecipeAddMultipleRecipesFromMarkor
+    - RecipeAddMultipleRecipesFromMarkor2
+    - RecipeDeleteMultipleRecipesWithConstraint
+    - RecipeDeleteMultipleRecipesWithNoise
+
+    # =======================================================================
+    #  RETRO MUSIC  (4 tasks)
+    # =======================================================================
+    # --- easy ---
+    - RetroCreatePlaylist
+    # --- medium ---
+    - RetroPlayingQueue
+    - RetroPlaylistDuration
+    - RetroSavePlaylist
+
+    # =======================================================================
+    #  SIMPLE DRAW PRO  (1 task)
+    # =======================================================================
+    # --- easy ---
+    - SimpleDrawProCreateDrawing
+
+    # =======================================================================
+    #  SIMPLE GALLERY PRO  (1 task)
+    # =======================================================================
+    # --- medium ---
+    - SaveCopyOfReceiptTaskEval
+
+    # =======================================================================
+    #  SMS  (6 tasks)
+    # =======================================================================
+    # --- easy ---
+    - SimpleSmsSend
+    # --- medium ---
+    - SimpleSmsReply
+    - SimpleSmsReplyMostRecent
+    - SimpleSmsResend
+    - SimpleSmsSendClipboardContent
+    # --- hard ---
+    - SimpleSmsSendReceivedAddress
+
+    # =======================================================================
+    #  SYSTEM  (14 tasks)
+    # =======================================================================
+    # --- easy ---
+    - OpenAppTaskEval
+    - SystemBluetoothTurnOff
+    - SystemBluetoothTurnOn
+    - SystemBrightnessMax
+    - SystemBrightnessMin
+    - SystemCopyToClipboard
+    - SystemWifiTurnOff
+    - SystemWifiTurnOn
+    # --- medium ---
+    - SystemBluetoothTurnOffVerify
+    - SystemBluetoothTurnOnVerify
+    - SystemBrightnessMaxVerify
+    - SystemBrightnessMinVerify
+    - SystemWifiTurnOffVerify
+    - SystemWifiTurnOnVerify
+
+    # =======================================================================
+    #  SYSTEM COMPOSITE  (2 tasks)
+    # =======================================================================
+    # --- medium ---
+    - TurnOffWifiAndTurnOnBluetooth
+    - TurnOnWifiAndOpenApp
+
+    # =======================================================================
+    #  VLC  (2 tasks)
+    # =======================================================================
+    # --- easy ---
+    - VlcCreatePlaylist
+    # --- medium ---
+    - VlcCreateTwoPlaylists
+
+    # =======================================================================
+    #  INFORMATION RETRIEVAL — Calendar  (9 tasks)
+    # =======================================================================
+    # --- easy ---
+    - SimpleCalendarEventsOnDate
+    - SimpleCalendarNextEvent
+    - SimpleCalendarAnyEventsOnDate
+    # --- medium ---
+    - SimpleCalendarEventOnDateAtTime
+    - SimpleCalendarNextMeetingWithPerson
+    - SimpleCalendarLocationOfEvent
+    - SimpleCalendarEventsInNextWeek
+    - SimpleCalendarFirstEventAfterStartTime
+    - SimpleCalendarEventsInTimeRange
+
+    # =======================================================================
+    #  INFORMATION RETRIEVAL — Tasks App  (6 tasks)
+    # =======================================================================
+    # --- easy ---
+    - TasksDueOnDate
+    - TasksHighPriorityTasks
+    # --- medium ---
+    - TasksHighPriorityTasksDueOnDate
+    - TasksDueNextWeek
+    - TasksCompletedTasksForDate
+    - TasksIncompleteTasksOnDate
+
+    # =======================================================================
+    #  INFORMATION RETRIEVAL — Sports Tracker  (6 tasks)
+    # =======================================================================
+    # --- easy ---
+    - SportsTrackerActivitiesOnDate
+    - SportsTrackerActivityDuration
+    # --- medium ---
+    - SportsTrackerActivitiesCountForWeek
+    - SportsTrackerLongestDistanceActivity
+    - SportsTrackerTotalDurationForCategoryThisWeek
+    # --- hard ---
+    - SportsTrackerTotalDistanceForCategoryOverInterval
+
+    # =======================================================================
+    #  INFORMATION RETRIEVAL — Notes / Joplin  (4 tasks)
+    # =======================================================================
+    # --- easy ---
+    - NotesIsTodo
+    - NotesTodoItemCount
+    # --- medium ---
+    - NotesRecipeIngredientCount
+    - NotesMeetingAttendeeCount
+
+
+# ---------------------------------------------------------------------------
+# Global evaluation settings
+# ---------------------------------------------------------------------------
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

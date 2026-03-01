@@ -31,12 +31,15 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import random
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from opentinker.environment.android_world.android_world_game import AndroidWorldGame
@@ -528,7 +531,7 @@ class AndroidWorldEvaluator:
 
     def __init__(
         self,
-        game: "AndroidWorldGame",
+        game: Union["AndroidWorldGame", List["AndroidWorldGame"]],
         task_set_config: "TaskSetConfig",
         split: str = "test_id",
         agent_fn: Any = None,
@@ -540,7 +543,8 @@ class AndroidWorldEvaluator:
     ):
         """
         Args:
-            game: An initialized AndroidWorldGame instance.
+            game: An initialized AndroidWorldGame instance, or a list of instances
+                  for parallel evaluation across multiple emulators.
             task_set_config: TaskSetConfig with split definitions.
             split: Which split to evaluate ("test_id" or "test_ood").
             agent_fn: Callable(observation: str) -> str that returns the agent action.
@@ -551,7 +555,12 @@ class AndroidWorldEvaluator:
             output_dir: Directory to save results.
             verbose: Print progress during evaluation.
         """
-        self.game = game
+        if isinstance(game, list):
+            self.games = game
+        else:
+            self.games = [game]
+        self.game = self.games[0]  # backward compat
+        self.num_workers = len(self.games)
         self.config = task_set_config
         self.split = split
         self.agent_fn = agent_fn or self._dummy_agent
@@ -613,7 +622,18 @@ class AndroidWorldEvaluator:
         print(flush=True)
 
     def run(self) -> EvalResults:
-        """Run all evaluation episodes and return results."""
+        """Run all evaluation episodes and return results.
+
+        When multiple game instances are available (num_workers > 1),
+        episodes are distributed across emulators in parallel using a
+        thread pool with a game-pool pattern.
+        """
+        if self.num_workers > 1:
+            return self._run_parallel()
+        return self._run_sequential()
+
+    def _run_sequential(self) -> EvalResults:
+        """Run all evaluation episodes sequentially on a single game."""
         tasks = self.config.get_tasks(self.split)
         results = EvalResults(split=self.split)
         results._start_time = time.time()
@@ -638,7 +658,7 @@ class AndroidWorldEvaluator:
                           f"{'':>5s} {'':>6s} {'':>6s} {'':>8s}│",
                           end="\r", flush=True)
 
-                ep = self._run_episode(task_name, instance_id, ep_seed)
+                ep = self._run_episode_on_game(self.game, task_name, instance_id, ep_seed)
                 results.add_episode(ep)
                 n_success += int(ep.success)
 
@@ -658,10 +678,82 @@ class AndroidWorldEvaluator:
 
         return results
 
-    def _run_episode(
-        self, task_name: str, instance_id: int, seed: Optional[int]
+    def _run_parallel(self) -> EvalResults:
+        """Run evaluation episodes in parallel across multiple game instances."""
+        tasks = self.config.get_tasks(self.split)
+        results = EvalResults(split=self.split)
+        results._start_time = time.time()
+
+        # Pre-compute all work items with deterministic seeds
+        rng = random.Random(self.seed) if self.seed is not None else random.Random()
+        work_items = []
+        for task_name in tasks:
+            for instance_id in range(self.n_instances):
+                ep_seed = rng.randint(0, 2**31) if self.seed is not None else None
+                work_items.append((task_name, instance_id, ep_seed))
+
+        total = len(work_items)
+        completed = 0
+        n_success = 0
+        results_lock = threading.Lock()
+
+        if self.verbose:
+            self._print_progress_header(len(tasks), total)
+            print(f"│  {'':>4s}  Using {self.num_workers} emulators in parallel"
+                  f"{'':>35s}│", flush=True)
+            print("├" + "─" * 78 + "┤", flush=True)
+
+        # Create game pool queue
+        game_pool: queue.Queue = queue.Queue()
+        for g in self.games:
+            game_pool.put(g)
+
+        def _worker(task_name: str, instance_id: int, ep_seed: Optional[int]) -> EpisodeResult:
+            nonlocal completed, n_success
+            game = game_pool.get()
+            try:
+                ep = self._run_episode_on_game(game, task_name, instance_id, ep_seed)
+            finally:
+                game_pool.put(game)
+
+            with results_lock:
+                results.add_episode(ep)
+                completed += 1
+                n_success += int(ep.success)
+                if self.verbose:
+                    self._print_progress_row(completed, total, ep, n_success, completed)
+            return ep
+
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            futures = [
+                executor.submit(_worker, task_name, instance_id, ep_seed)
+                for task_name, instance_id, ep_seed in work_items
+            ]
+            # Wait for all futures to complete (results already collected via lock)
+            for f in futures:
+                f.result()  # raises if worker raised
+
+        results._end_time = time.time()
+
+        if self.verbose:
+            self._print_progress_footer(results)
+
+        if self.output_dir:
+            results.save(self.output_dir)
+
+        if self.verbose:
+            print(results.summary())
+
+        return results
+
+    def _run_episode_on_game(
+        self,
+        game: "AndroidWorldGame",
+        task_name: str,
+        instance_id: int,
+        seed: Optional[int],
     ) -> EpisodeResult:
-        """Run a single evaluation episode."""
+        """Run a single evaluation episode on a specific game instance."""
         ep_start = time.time()
         total_reward = 0.0
         invalid_actions = 0
@@ -672,24 +764,24 @@ class AndroidWorldEvaluator:
 
         try:
             # Reset game for this task
-            obs = self.game.reset(task_type=task_name, seed=seed)
+            obs = game.reset(task_type=task_name, seed=seed)
 
             for step_i in range(self.max_steps):
                 # Agent produces action
                 action = self.agent_fn(obs)
-                result = self.game.step(action)
+                result = game.step(action)
 
                 steps += 1
                 total_reward += result.reward
 
                 # Track invalid actions
-                if result.reward == self.game.REWARD_INVALID_ACTION:
+                if result.reward == game.REWARD_INVALID_ACTION:
                     invalid_actions += 1
 
                 obs = result.observation
 
                 if result.done:
-                    success = result.reward >= self.game.REWARD_SUCCESS
+                    success = result.reward >= game.REWARD_SUCCESS
                     timeout = False
                     break
             else:

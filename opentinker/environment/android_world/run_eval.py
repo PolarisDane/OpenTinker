@@ -216,13 +216,30 @@ def run_eval(
     max_steps: Optional[int] = None,
     seed: Optional[int] = None,
     output_dir: str = "./eval_results",
+    num_emulators: int = 1,
+    emulator_base_console_port: int = 5556,
+    emulator_base_grpc_port: int = 8554,
     emulator_console_port: Optional[int] = None,
     emulator_grpc_port: Optional[int] = None,
     mock: bool = False,
     agent_fn=None,
 ):
-    """Run evaluation on specified splits."""
+    """Run evaluation on specified splits.
+
+    When num_emulators > 1, episodes are distributed across emulators in
+    parallel. Each emulator gets its own AndroidWorldGame instance with
+    ports derived from the base ports:
+      console_port = emulator_base_console_port + i * 2
+      grpc_port    = emulator_base_grpc_port + i
+
+    For backward compatibility, if emulator_console_port/emulator_grpc_port
+    are explicitly set, they override base ports and force single-emulator mode.
+    """
     from opentinker.environment.android_world.android_world_game import AndroidWorldGame
+
+    # Backward compat: explicit single-port overrides force single-emulator
+    if emulator_console_port is not None or emulator_grpc_port is not None:
+        num_emulators = 1
 
     all_results = {}
 
@@ -235,19 +252,35 @@ def run_eval(
         n = n_instances or config.n_instances_per_task
         print(f"  Tasks: {len(tasks)} types × {n} instances = {len(tasks) * n} episodes")
         print(f"  Max steps/episode: {max_steps or config.eval_max_steps}")
+        print(f"  Emulators: {num_emulators}")
         print()
 
-        # Create game instance
-        game = AndroidWorldGame(
-            max_steps=max_steps or config.eval_max_steps,
-            task_types=tasks,
-            split=split,
-            emulator_console_port=emulator_console_port,
-            emulator_grpc_port=emulator_grpc_port,
-        )
+        # Create game instance(s)
+        games = []
+        for i in range(num_emulators):
+            if emulator_console_port is not None:
+                c_port = emulator_console_port
+            else:
+                c_port = emulator_base_console_port + i * 2
+
+            if emulator_grpc_port is not None:
+                g_port = emulator_grpc_port
+            else:
+                g_port = emulator_base_grpc_port + i
+
+            print(f"  Game {i}: console_port={c_port}, grpc_port={g_port}")
+            games.append(AndroidWorldGame(
+                max_steps=max_steps or config.eval_max_steps,
+                task_types=tasks,
+                split=split,
+                emulator_console_port=c_port,
+                emulator_grpc_port=g_port,
+            ))
+
+        game_or_games = games if len(games) > 1 else games[0]
 
         evaluator = AndroidWorldEvaluator(
-            game=game,
+            game=game_or_games,
             task_set_config=config,
             split=split,
             agent_fn=agent_fn,
@@ -344,16 +377,34 @@ def main():
         help="Directory to save results JSON",
     )
     parser.add_argument(
+        "--num_emulators",
+        type=int,
+        default=1,
+        help="Number of emulators for parallel evaluation (default: 1)",
+    )
+    parser.add_argument(
+        "--emulator_base_console_port",
+        type=int,
+        default=5556,
+        help="Base console port; emulator i uses base + i*2 (default: 5556)",
+    )
+    parser.add_argument(
+        "--emulator_base_grpc_port",
+        type=int,
+        default=8554,
+        help="Base gRPC port; emulator i uses base + i (default: 8554)",
+    )
+    parser.add_argument(
         "--emulator_console_port",
         type=int,
         default=None,
-        help="Emulator console port",
+        help="Single-emulator console port override (backward compat)",
     )
     parser.add_argument(
         "--emulator_grpc_port",
         type=int,
         default=None,
-        help="Emulator gRPC port",
+        help="Single-emulator gRPC port override (backward compat)",
     )
 
     # --- Checkpoint / Model arguments ---
@@ -477,6 +528,9 @@ def main():
         max_steps=args.max_steps,
         seed=args.seed if args.seed is not None else config.eval_seed,
         output_dir=args.output_dir,
+        num_emulators=args.num_emulators,
+        emulator_base_console_port=args.emulator_base_console_port,
+        emulator_base_grpc_port=args.emulator_base_grpc_port,
         emulator_console_port=args.emulator_console_port,
         emulator_grpc_port=args.emulator_grpc_port,
         agent_fn=agent_fn,

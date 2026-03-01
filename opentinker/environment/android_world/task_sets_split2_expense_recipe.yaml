@@ -1,0 +1,55 @@
+# ============================================================================
+# Split 2 — Expense → Recipe Cross-App Transfer
+# ============================================================================
+# Strategy: Train on Expense tasks (CRUD on financial records), test whether
+#           the agent transfers to Recipe tasks (structurally similar CRUD on
+#           a different SQLite-backed app with different UI).
+#
+# Train (9):  All Expense tasks (easy→hard)
+# test_id:    Same 9 tasks, fresh random params
+# test_ood:   13 Recipe tasks (similar CRUD pattern, different app)
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - ExpenseAddSingle
+    - ExpenseDeleteSingle
+    # --- medium ---
+    - ExpenseAddMultiple
+    - ExpenseDeleteMultiple
+    - ExpenseDeleteMultiple2
+    - ExpenseDeleteDuplicates
+    - ExpenseDeleteDuplicates2
+    # --- hard ---
+    - ExpenseAddMultipleFromGallery
+    - ExpenseAddMultipleFromMarkor
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Recipe — same CRUD pattern, completely different app
+    # --- easy ---
+    - RecipeAddSingleRecipe
+    - RecipeDeleteSingleRecipe
+    # --- medium ---
+    - RecipeAddMultipleRecipes
+    - RecipeDeleteMultipleRecipes
+    - RecipeDeleteDuplicateRecipes
+    - RecipeDeleteDuplicateRecipes2
+    - RecipeDeleteDuplicateRecipes3
+    - RecipeDeleteSingleWithRecipeWithNoise
+    # --- hard ---
+    - RecipeAddMultipleRecipesFromImage
+    - RecipeAddMultipleRecipesFromMarkor
+    - RecipeAddMultipleRecipesFromMarkor2
+    - RecipeDeleteMultipleRecipesWithConstraint
+    - RecipeDeleteMultipleRecipesWithNoise
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

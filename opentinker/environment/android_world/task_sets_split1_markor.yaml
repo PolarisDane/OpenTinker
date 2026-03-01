@@ -1,0 +1,47 @@
+# ============================================================================
+# Split 1 — Markor In-App Generalization
+# ============================================================================
+# Strategy: Train on a mix of Markor tasks (easy→hard), test whether the
+#           agent generalises to UNSEEN Markor tasks and cross-app composites.
+#
+# Train (8):  Markor easy/medium/hard mix
+# test_id:    Same 8 tasks, fresh random params
+# test_ood:   5 remaining Markor tasks + MarkorCreateNoteAndSms composite
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - MarkorCreateNote
+    - MarkorCreateFolder
+    - MarkorDeleteNote
+    # --- medium ---
+    - MarkorAddNoteHeader
+    - MarkorChangeNoteContent
+    - MarkorEditNote
+    - MarkorMoveNote
+    # --- hard ---
+    - MarkorMergeNotes
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Unseen Markor tasks (same app, different operations)
+    # --- easy ---
+    - MarkorDeleteAllNotes
+    # --- medium ---
+    - MarkorCreateNoteFromClipboard
+    - MarkorDeleteNewestNote
+    # --- hard ---
+    - MarkorTranscribeReceipt
+    - MarkorTranscribeVideo
+    # Cross-app composite (Markor + SMS)
+    - MarkorCreateNoteAndSms
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

@@ -1,0 +1,40 @@
+# ============================================================================
+# Split 11 — Expense Mixed Difficulty
+# ============================================================================
+# Strategy: Uniformly mix easy/medium/hard Expense tasks across train and
+#           OOD. Both splits contain add, delete, and deduplicate tasks at
+#           all difficulty levels.
+#
+# Train (5):  Mixed difficulty Expense tasks
+# test_id:    Same 5 tasks, fresh random params
+# test_ood:   4 remaining Expense tasks (also mixed difficulty)
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - ExpenseAddSingle
+    # --- medium ---
+    - ExpenseDeleteMultiple
+    - ExpenseDeleteDuplicates
+    # --- hard ---
+    - ExpenseAddMultipleFromGallery
+    - ExpenseAddMultipleFromMarkor
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # --- easy ---
+    - ExpenseDeleteSingle
+    # --- medium ---
+    - ExpenseAddMultiple
+    - ExpenseDeleteMultiple2
+    - ExpenseDeleteDuplicates2
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

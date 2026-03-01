@@ -1,0 +1,46 @@
+# ============================================================================
+# Split 9 — Markor Mixed Difficulty
+# ============================================================================
+# Strategy: Uniformly mix easy/medium/hard Markor tasks across train and OOD.
+#           No specific generalization axis — both splits cover all difficulty
+#           levels and operation types.
+#
+# Train (7):  Mixed difficulty Markor tasks
+# test_id:    Same 7 tasks, fresh random params
+# test_ood:   6 remaining Markor tasks + 1 composite (also mixed difficulty)
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - MarkorCreateNote
+    - MarkorDeleteAllNotes
+    # --- medium ---
+    - MarkorChangeNoteContent
+    - MarkorCreateNoteFromClipboard
+    - MarkorDeleteNewestNote
+    # --- hard ---
+    - MarkorTranscribeReceipt
+    - MarkorMergeNotes
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # --- easy ---
+    - MarkorCreateFolder
+    - MarkorDeleteNote
+    # --- medium ---
+    - MarkorAddNoteHeader
+    - MarkorEditNote
+    - MarkorMoveNote
+    # --- hard ---
+    - MarkorTranscribeVideo
+    - MarkorCreateNoteAndSms
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

@@ -1,0 +1,43 @@
+# ============================================================================
+# Split 7 — Expense In-App: Easy/Medium → Hard (Difficulty Transfer)
+# ============================================================================
+# Strategy: Train on easy & medium Expense tasks (single-app CRUD), test
+#           whether the agent transfers to hard Expense tasks that require
+#           cross-app data import (from Gallery / Markor).
+#
+# Train (7):  Expense easy + medium
+# test_id:    Same 7 tasks, fresh random params
+# test_ood:   2 hard cross-app Expense tasks + similar Gallery/Markor tasks
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - ExpenseAddSingle
+    - ExpenseDeleteSingle
+    # --- medium ---
+    - ExpenseAddMultiple
+    - ExpenseDeleteMultiple
+    - ExpenseDeleteMultiple2
+    - ExpenseDeleteDuplicates
+    - ExpenseDeleteDuplicates2
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Hard Expense — cross-app import, never seen during training
+    - ExpenseAddMultipleFromGallery
+    - ExpenseAddMultipleFromMarkor
+    # Gallery task — related cross-app skill
+    - SaveCopyOfReceiptTaskEval
+    # Markor tasks that involve cross-app data
+    - MarkorTranscribeReceipt
+    - MarkorCreateNoteFromClipboard
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

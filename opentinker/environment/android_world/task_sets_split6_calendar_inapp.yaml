@@ -1,0 +1,43 @@
+# ============================================================================
+# Split 6 — Calendar In-App Generalization (Add → Delete & Advanced)
+# ============================================================================
+# Strategy: Train on Calendar Add tasks (various difficulties), test whether
+#           the agent generalises to Calendar Delete tasks and repeating
+#           events within the same app.
+#
+# Train (5):  Calendar Add tasks (easy + medium)
+# test_id:    Same 5 tasks, fresh random params
+# test_ood:   3 Calendar Delete tasks + advanced add (RepeatingEvent)
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy add ---
+    - SimpleCalendarAddOneEvent
+    - SimpleCalendarAddOneEventTomorrow
+    - SimpleCalendarAddOneEventInTwoWeeks
+    # --- medium add ---
+    - SimpleCalendarAddOneEventRelativeDay
+    - SimpleCalendarAddRepeatingEvent
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Delete tasks — same app, inverse operation
+    # --- easy ---
+    - SimpleCalendarDeleteOneEvent
+    # --- medium ---
+    - SimpleCalendarDeleteEvents
+    - SimpleCalendarDeleteEventsOnRelativeDay
+    # Calendar IR — same app, read instead of write
+    - SimpleCalendarEventsOnDate
+    - SimpleCalendarNextEvent
+    - SimpleCalendarAnyEventsOnDate
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

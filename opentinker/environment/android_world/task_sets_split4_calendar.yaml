@@ -1,0 +1,49 @@
+# ============================================================================
+# Split 4 — Calendar Action → Information Retrieval
+# ============================================================================
+# Strategy: Train on Calendar ACTION tasks (create/delete events), test
+#           whether the agent transfers to Calendar INFORMATION RETRIEVAL
+#           tasks (query/read events). Same app, fundamentally different
+#           skill: writing vs. reading.
+#
+# Train (8):  All SimpleCalendar action tasks
+# test_id:    Same 8 tasks, fresh random params
+# test_ood:   9 Calendar IR tasks (same app, read instead of write)
+# ============================================================================
+
+train:
+  tasks:
+    # --- easy ---
+    - SimpleCalendarAddOneEvent
+    - SimpleCalendarAddOneEventTomorrow
+    - SimpleCalendarAddOneEventInTwoWeeks
+    - SimpleCalendarDeleteOneEvent
+    # --- medium ---
+    - SimpleCalendarAddOneEventRelativeDay
+    - SimpleCalendarAddRepeatingEvent
+    - SimpleCalendarDeleteEvents
+    - SimpleCalendarDeleteEventsOnRelativeDay
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Calendar Information Retrieval — same app, query instead of mutate
+    # --- easy ---
+    - SimpleCalendarEventsOnDate
+    - SimpleCalendarNextEvent
+    - SimpleCalendarAnyEventsOnDate
+    # --- medium ---
+    - SimpleCalendarEventOnDateAtTime
+    - SimpleCalendarNextMeetingWithPerson
+    - SimpleCalendarLocationOfEvent
+    - SimpleCalendarEventsInNextWeek
+    - SimpleCalendarFirstEventAfterStartTime
+    - SimpleCalendarEventsInTimeRange
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

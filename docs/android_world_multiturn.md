@@ -352,6 +352,66 @@ NUM_EMULATORS=8 NUM_GPUS=8 GPUS="[0,1,2,3,4,5,6,7]" bash opentinker/scripts/run_
 
 ---
 
+## App Requirements per Task Split
+
+The default environment setup (`setup_apps()` in `android_world/env/setup_device/setup.py`) installs **all 24 apps** automatically. The table below documents which apps each task split config file actually requires, useful for debugging or selective installation.
+
+### Pre-installed Apps (no APK needed)
+
+These ship with the Android 13 emulator image and require no installation:
+
+| App | Package Name | Used By Tasks |
+|-----|-------------|---------------|
+| Camera | `com.android.camera2` | Camera\* |
+| Chrome | `com.android.chrome` | Browser\* |
+| Clock | `com.google.android.deskclock` | Clock\* |
+| Contacts | `com.google.android.contacts` | Contacts\* |
+| Dialer | `com.google.android.dialer` | (phone calls) |
+| Files | `com.google.android.documentsui` | Files\* |
+| Settings | `com.android.settings` | System\*, OpenApp\*, TurnOn/Off\* |
+
+### Third-party Apps (APK installed during setup)
+
+| App | Package Name | APK | Used By Tasks |
+|-----|-------------|-----|---------------|
+| Android World | `com.google.androidworld` | `androidworld.apk` | (infrastructure) |
+| Audio Recorder | `com.dimowner.audiorecorder` | `com.dimowner.audiorecorder_926.apk` | AudioRecorder\* |
+| Broccoli (Recipe) | `com.flauschcode.broccoli` | `com.flauschcode.broccoli_1020600.apk` | Recipe\* |
+| Clipper | `ca.zgrs.clipper` | `clipper.apk` | (clipboard infrastructure) |
+| Joplin | `net.cozic.joplin` | `net.cozic.joplin_2097740.apk` | Notes\* |
+| Markor | `net.gsantner.markor` | `net.gsantner.markor_146.apk` | Markor\* |
+| MiniWoB | — | `miniwobapp.apk` | (MiniWoB tasks) |
+| OpenTracks | `de.dennisguse.opentracks` | `de.dennisguse.opentracks_5705.apk` | SportsTracker\* |
+| OsmAnd | `net.osmand` | `net.osmand-4.6.13.apk` | OsmAnd\* |
+| Pro Expense | `com.arduia.expense` | `com.arduia.expense_11.apk` | Expense\* |
+| Retro Music | `code.name.monkey.retromusic` | `code.name.monkey.retromusic_10603.apk` | Retro\* |
+| Simple Calendar Pro | `com.simplemobiletools.calendar.pro` | `com.simplemobiletools.calendar.pro_238.apk` | SimpleCalendar\* |
+| Simple Draw Pro | `com.simplemobiletools.draw.pro` | `com.simplemobiletools.draw.pro_79.apk` | SimpleDrawPro\* |
+| Simple Gallery Pro | `com.simplemobiletools.gallery.pro` | `com.simplemobiletools.gallery.pro_396.apk` | SaveCopyOfReceipt\*, Expense\*FromGallery |
+| Simple SMS Messenger | `com.simplemobiletools.smsmessenger` | `com.simplemobiletools.smsmessenger_85.apk` | SimpleSms\*, \*AndSms composites |
+| Tasks | `org.tasks` | `org.tasks_130605.apk` | Tasks\* |
+| VLC | `org.videolan.vlc` | `org.videolan.vlc_13050408.apk` | Vlc\* |
+
+### Per-Split App Requirements
+
+| Split Config | Train Apps (APK) | OOD Apps (APK) | Pre-installed |
+|-------------|------------------|----------------|---------------|
+| `task_sets_split1_markor.yaml` | Markor | Markor, Simple SMS, Clipper | — |
+| `task_sets_split2_expense_recipe.yaml` | Pro Expense, Markor, Simple Gallery Pro | Broccoli (Recipe), Markor | — |
+| `task_sets_split3_system.yaml` | — | — | Settings |
+| `task_sets_split4_calendar.yaml` | Simple Calendar Pro | Simple Calendar Pro | — |
+| `task_sets_split5_sms_contacts.yaml` | Simple SMS | Audio Recorder, OsmAnd, Retro Music, Simple Draw Pro, VLC | Contacts, Chrome, Camera, Clock |
+| `task_sets_split6_calendar_inapp.yaml` | Simple Calendar Pro | Simple Calendar Pro | — |
+| `task_sets_split7_expense_difficulty.yaml` | Pro Expense | Pro Expense, Simple Gallery Pro, Markor | — |
+| `task_sets_split8_expense_operation.yaml` | Pro Expense, Markor, Simple Gallery Pro | Pro Expense | — |
+| `task_sets_split9_markor_mixed.yaml` | Markor, Clipper | Markor, Simple SMS | — |
+| `task_sets_split10_calendar_mixed.yaml` | Simple Calendar Pro | Simple Calendar Pro | — |
+| `task_sets_split11_expense_mixed.yaml` | Pro Expense, Markor, Simple Gallery Pro | Pro Expense | — |
+
+> **Note:** All apps listed above are included in the default `_APPS` installation list. No additional installation steps are required beyond the standard `setup_apps()` call during environment initialization.
+
+---
+
 ## Troubleshooting
 
 *   **"KVM is not found"**: Ensure virtualization is enabled in your BIOS/Hypervisor. On Linux, check permissions for `/dev/kvm`. If in a container, run with `--device /dev/kvm`.

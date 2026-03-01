@@ -227,6 +227,7 @@ case "$1" in
         EVAL_MAX_STEPS="${EVAL_MAX_STEPS:-30}"
         EVAL_SEED="${EVAL_SEED:-42}"
         EVAL_OUTPUT="${EVAL_OUTPUT:-./eval_results}"
+        EVAL_NUM_EMULATORS="${EVAL_NUM_EMULATORS:-1}"
         # Checkpoint / model to evaluate (optional)
         EVAL_MODEL_PATH="${EVAL_MODEL_PATH:-}"
         EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-}"
@@ -242,6 +243,7 @@ case "$1" in
         echo "  Max steps: $EVAL_MAX_STEPS"
         echo "  Seed: $EVAL_SEED"
         echo "  Output: $EVAL_OUTPUT"
+        echo "  Emulators: $EVAL_NUM_EMULATORS"
         if [ -n "$EVAL_MODEL_PATH" ]; then
             echo "  Model: $EVAL_MODEL_PATH"
         elif [ -n "$EVAL_VLLM_SERVER_URL" ]; then
@@ -273,8 +275,9 @@ case "$1" in
             --max_steps $EVAL_MAX_STEPS \
             --seed $EVAL_SEED \
             --output_dir $EVAL_OUTPUT \
-            --emulator_console_port $EMULATOR_BASE_CONSOLE_PORT \
-            --emulator_grpc_port $EMULATOR_BASE_GRPC_PORT \
+            --num_emulators $EVAL_NUM_EMULATORS \
+            --emulator_base_console_port $EMULATOR_BASE_CONSOLE_PORT \
+            --emulator_base_grpc_port $EMULATOR_BASE_GRPC_PORT \
             $MODEL_ARGS
         ;;
 
@@ -305,6 +308,7 @@ case "$1" in
         echo ""
         echo "=== For Evaluation ==="
         echo "  $0 eval                    # Run ID + OOD evaluation (needs running emulator)"
+        echo "  EVAL_NUM_EMULATORS=4 $0 eval  # Parallel eval on 4 emulators"
         echo "  $0 eval-validate           # Validate task_sets.yaml (no emulator needed)"
         echo ""
         echo "Evaluation Configuration (env vars):"
@@ -315,6 +319,7 @@ case "$1" in
         echo "  EVAL_GPU_MEM_UTIL=0.9      # GPU memory fraction"
         echo "  EVAL_TEMPERATURE=0.0       # Sampling temperature (0=greedy)"
         echo "  EVAL_MAX_TOKENS=4096       # Max tokens per action"
+        echo "  EVAL_NUM_EMULATORS=1       # Number of emulators for parallel eval"
         echo "  EVAL_SPLIT='test_id test_ood'  # Splits to evaluate"
         echo "  EVAL_INSTANCES=3           # Instances per task"
         echo "  EVAL_MAX_STEPS=30          # Max steps per episode"

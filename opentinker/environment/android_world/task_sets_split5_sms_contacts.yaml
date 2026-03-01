@@ -1,0 +1,63 @@
+# ============================================================================
+# Split 5 — SMS + Contacts → Diverse OOD Apps
+# ============================================================================
+# Strategy: Train on communication/people-management tasks (SMS + Contacts),
+#           test whether the agent transfers to completely unrelated apps
+#           it has never seen (media, maps, drawing, browser, etc.).
+#
+# Train (8):  SMS (6) + Contacts (2)
+# test_id:    Same 8 tasks, fresh random params
+# test_ood:   15 tasks across 8 unseen apps
+# ============================================================================
+
+train:
+  tasks:
+    # SMS
+    # --- easy ---
+    - SimpleSmsSend
+    # --- medium ---
+    - SimpleSmsReply
+    - SimpleSmsReplyMostRecent
+    - SimpleSmsResend
+    - SimpleSmsSendClipboardContent
+    # --- hard ---
+    - SimpleSmsSendReceivedAddress
+    # Contacts
+    # --- easy ---
+    - ContactsAddContact
+    - ContactsNewContactDraft
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Audio Recorder (never seen)
+    - AudioRecorderRecordAudio
+    - AudioRecorderRecordAudioWithFileName
+    # Browser (never seen)
+    - BrowserMultiply
+    - BrowserDraw
+    # Camera (never seen)
+    - CameraTakePhoto
+    - CameraTakeVideo
+    # Clock (never seen)
+    - ClockStopWatchRunning
+    - ClockTimerEntry
+    # OsmAnd maps (never seen)
+    - OsmAndFavorite
+    - OsmAndMarker
+    # Retro Music (never seen)
+    - RetroCreatePlaylist
+    - RetroSavePlaylist
+    # Drawing (never seen)
+    - SimpleDrawProCreateDrawing
+    # VLC (never seen)
+    - VlcCreatePlaylist
+    - VlcCreateTwoPlaylists
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

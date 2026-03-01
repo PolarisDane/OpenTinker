@@ -1,0 +1,51 @@
+# ============================================================================
+# Split 10 — Calendar Mixed Difficulty
+# ============================================================================
+# Strategy: Uniformly mix easy/medium Calendar action + IR tasks across
+#           train and OOD. Both splits contain add, delete, and query tasks
+#           at all difficulty levels.
+#
+# Train (8):  Mixed Calendar action + IR tasks
+# test_id:    Same 8 tasks, fresh random params
+# test_ood:   9 remaining Calendar action + IR tasks (also mixed)
+# ============================================================================
+
+train:
+  tasks:
+    # Action — easy
+    - SimpleCalendarAddOneEvent
+    - SimpleCalendarDeleteOneEvent
+    # Action — medium
+    - SimpleCalendarAddRepeatingEvent
+    - SimpleCalendarDeleteEvents
+    # IR — easy
+    - SimpleCalendarEventsOnDate
+    - SimpleCalendarAnyEventsOnDate
+    # IR — medium
+    - SimpleCalendarNextMeetingWithPerson
+    - SimpleCalendarEventsInTimeRange
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # Action — easy
+    - SimpleCalendarAddOneEventTomorrow
+    - SimpleCalendarAddOneEventInTwoWeeks
+    # Action — medium
+    - SimpleCalendarAddOneEventRelativeDay
+    - SimpleCalendarDeleteEventsOnRelativeDay
+    # IR — easy
+    - SimpleCalendarNextEvent
+    # IR — medium
+    - SimpleCalendarEventOnDateAtTime
+    - SimpleCalendarLocationOfEvent
+    - SimpleCalendarEventsInNextWeek
+    - SimpleCalendarFirstEventAfterStartTime
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42

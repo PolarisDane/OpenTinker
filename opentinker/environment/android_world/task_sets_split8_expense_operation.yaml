@@ -1,0 +1,43 @@
+# ============================================================================
+# Split 8 — Expense In-App: Add → Delete (Operation Transfer)
+# ============================================================================
+# Strategy: Train ONLY on Expense Add tasks (create records), test whether
+#           the agent transfers to Expense Delete tasks (remove/deduplicate
+#           records) — same app, opposite operation direction.
+#
+# Train (4):  All Expense Add tasks
+# test_id:    Same 4 tasks, fresh random params
+# test_ood:   5 Expense Delete tasks (inverse operation, same UI)
+# ============================================================================
+
+train:
+  tasks:
+    # All Add operations (easy → hard)
+    # --- easy ---
+    - ExpenseAddSingle
+    # --- medium ---
+    - ExpenseAddMultiple
+    # --- hard ---
+    - ExpenseAddMultipleFromGallery
+    - ExpenseAddMultipleFromMarkor
+
+test_id:
+  use_train_tasks: true
+  tasks: []
+
+test_ood:
+  tasks:
+    # All Delete operations — same app, inverse skill
+    # --- easy ---
+    - ExpenseDeleteSingle
+    # --- medium ---
+    - ExpenseDeleteMultiple
+    - ExpenseDeleteMultiple2
+    # Deduplicate — delete variant requiring reasoning
+    - ExpenseDeleteDuplicates
+    - ExpenseDeleteDuplicates2
+
+eval_settings:
+  n_instances_per_task: 1
+  max_steps: 15
+  seed: 42
