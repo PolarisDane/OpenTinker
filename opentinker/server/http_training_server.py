@@ -1196,6 +1196,14 @@ class PPOTrainingServerBackend:
                     batch.meta_info["multi_turn"] = (
                         self.config.actor_rollout_ref.rollout.multi_turn.enable
                     )
+                    # If use_kl_loss is enabled (GRPO default), ref_log_prob hasn't
+                    # been computed yet. Use old_log_probs as stand-in so that the KL
+                    # term acts as KL(current || rollout), a mild regulariser.
+                    _rwml_added_ref = False
+                    if "ref_log_prob" not in batch.batch and "old_log_probs" in batch.batch:
+                        batch.batch["ref_log_prob"] = batch.batch["old_log_probs"].clone()
+                        _rwml_added_ref = True
+
                     rwml_actor_output = self.actor_rollout_wg.update_actor(batch)
                     rwml_actor_metrics = reduce_metrics(
                         rwml_actor_output.meta_info["metrics"]
@@ -1204,8 +1212,11 @@ class PPOTrainingServerBackend:
                         {f"rwml/{k}": v for k, v in rwml_actor_metrics.items()}
                     )
 
-                    # Remove RWML advantages so policy training computes its own
+                    # Clean up: remove RWML-specific fields so policy training
+                    # computes its own advantages and ref_log_prob
                     del batch.batch["advantages"]
+                    if _rwml_added_ref:
+                        del batch.batch["ref_log_prob"]
 
             # 7. Compute ref_log_prob if needed
             if self.use_reference_policy:
