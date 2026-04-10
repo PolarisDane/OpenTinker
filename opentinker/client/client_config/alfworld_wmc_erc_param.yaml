@@ -79,17 +79,29 @@ world_model_annealing_end_factor: 1.0
 
 # RWML: Reinforcement World Model Learning (arxiv:2602.05842)
 # Computes per-turn rewards based on text embedding similarity between the
-# model's predicted next observation (argmax at obs token positions) and the
-# actual environment observation. Binary reward: 1.0 if (1-cos_sim) < tau_d.
+# model's predicted next observation and the actual environment observation.
+# Binary reward: 1.0 if (1-cos_sim) < tau_d.
 # - enable: master switch
+# - mode: "autoregressive" (correct, generates predictions via model.generate)
+#         "teacher_forced" (fast but inaccurate, uses argmax from forward pass)
 # - embedding_model: HuggingFace model for text embeddings
+#   NOTE: Use a large model (e.g. gte-large-en-v1.5, Qwen3-Embedding-8B).
+#         Small models like all-MiniLM-L6-v2 lack discrimination on short texts.
 # - tau_d: distance threshold (paper uses 0.2 for ALFWorld)
 # - coeff: weight when combining RWML reward with task success reward
+# - max_new_tokens: max tokens to generate per observation prediction
+# - micro_batch_size: generation micro-batch size (autoregressive mode only)
+# - prompt_template: "direct" (predict immediately, paper Table A5)
+#                    "reasoning" (reason first then predict, paper Table A4)
 rwml:
   enable: false
+  mode: "autoregressive"
   embedding_model: "Alibaba-NLP/gte-large-en-v1.5"
   tau_d: 0.2
   coeff: 1.0
+  max_new_tokens: 256
+  micro_batch_size: 16
+  prompt_template: "direct"
 
 # Interaction configuration
 interaction:

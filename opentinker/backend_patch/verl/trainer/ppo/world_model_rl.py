@@ -27,6 +27,7 @@ The rewards are added to per-turn turn_scores and flow through GRPO per-step
 advantage computation.
 """
 
+import re
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -36,6 +37,122 @@ import torch.nn.functional as F
 from opentinker.backend_patch.verl.trainer.ppo.per_step_core_algos import (
     compute_turn_boundaries,
 )
+
+# ---------------------------------------------------------------------------
+# RWML prediction prompt suffixes (appended to rollout prefix at action boundary)
+# ---------------------------------------------------------------------------
+
+# Direct prediction (paper Table A5): model generates observation directly.
+# Ends with the opening tag so the model starts generating content immediately.
+RWML_PREDICTION_SUFFIX = (
+    "\n\nNow predict the immediate next observation after the action above. "
+    "Present your prediction within <next_state> </next_state> tags.\n<next_state>"
+)
+
+# Reasoning variant (paper Table A4): model reasons in <think> tags first.
+RWML_REASONING_SUFFIX = (
+    "\n\nNow predict the immediate next observation after the action above. "
+    "First briefly reason step-by-step about the previous steps and current "
+    "situation within <think> </think> tags, then present the predicted "
+    "observation within <next_state> </next_state> tags.\n<think>"
+)
+
+_NEXT_STATE_RE = re.compile(
+    r"<next_state>(.*?)(?:</next_state>|$)", re.DOTALL
+)
+
+
+def extract_next_state(text: str) -> str:
+    """Extract content between <next_state> and </next_state> tags.
+
+    Falls back to the full text (stripped) if tags are not found.
+    """
+    m = _NEXT_STATE_RE.search(text)
+    if m:
+        return m.group(1).strip()
+    return text.strip()
+
+
+def build_rwml_prefixes(
+    input_ids: torch.Tensor,
+    response_mask: torch.Tensor,
+    attention_mask: torch.Tensor,
+    tokenizer,
+    prompt_template: str = "direct",
+) -> Dict[str, np.ndarray]:
+    """Construct per-turn prefixes for autoregressive observation prediction.
+
+    For each (sample, turn), the prefix is the original input_ids up to and
+    including the action turn, followed by the tokenized RWML prediction
+    prompt suffix.
+
+    Args:
+        input_ids: (batch_size, full_seq_length)
+        response_mask: (batch_size, response_length) 1=action, 0=env/pad
+        attention_mask: (batch_size, full_seq_length) 1=real, 0=pad
+        tokenizer: tokenizer for encoding the prompt suffix
+        prompt_template: "direct" or "reasoning"
+
+    Returns:
+        dict with numpy object arrays:
+          rwml_prefix_ids: list of token-ID lists (variable length)
+          rwml_sample_indices: flat int array of sample indices
+          rwml_turn_indices: flat int array of turn indices
+    """
+    suffix_text = (
+        RWML_REASONING_SUFFIX if prompt_template == "reasoning"
+        else RWML_PREDICTION_SUFFIX
+    )
+    suffix_ids = tokenizer.encode(suffix_text, add_special_tokens=False)
+
+    resp_len = response_mask.shape[1]
+    prompt_len = input_ids.shape[1] - resp_len
+
+    turn_boundaries = compute_turn_boundaries(response_mask)
+
+    all_prefix_ids: List[List[int]] = []
+    sample_indices: List[int] = []
+    turn_indices: List[int] = []
+
+    for i in range(input_ids.shape[0]):
+        for t, (start, end) in enumerate(turn_boundaries[i]):
+            # prefix = everything up to (and including) the last action token
+            prefix_end = prompt_len + end
+            prefix = input_ids[i, :prefix_end].cpu().tolist()
+            prefix = prefix + suffix_ids
+            all_prefix_ids.append(prefix)
+            sample_indices.append(i)
+            turn_indices.append(t)
+
+    return {
+        "rwml_prefix_ids": np.array(all_prefix_ids, dtype=object),
+        "rwml_sample_indices": np.array(sample_indices, dtype=np.int64),
+        "rwml_turn_indices": np.array(turn_indices, dtype=np.int64),
+    }
+
+
+def decode_rwml_generations(
+    generated_id_lists: np.ndarray,
+    tokenizer,
+) -> np.ndarray:
+    """Decode generated token-ID lists and extract <next_state> content.
+
+    Args:
+        generated_id_lists: numpy object array where each element is a list
+            of int token IDs (the generated portion only, no prefix).
+        tokenizer: tokenizer for decoding.
+
+    Returns:
+        numpy object array of predicted observation strings.
+    """
+    texts = []
+    for ids in generated_id_lists:
+        if ids is None or len(ids) == 0:
+            texts.append("")
+            continue
+        raw = tokenizer.decode(list(ids), skip_special_tokens=True)
+        texts.append(extract_next_state(raw))
+    return np.array(texts, dtype=object)
 
 
 class EmbeddingSimilarityReward:

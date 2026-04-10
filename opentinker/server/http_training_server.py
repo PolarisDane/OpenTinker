@@ -751,7 +751,15 @@ class PPOTrainingServerBackend:
                 )
                 self.rwml_tau_d = rwml_cfg.get("tau_d", 0.2)
                 self.rwml_coeff = rwml_cfg.get("coeff", 1.0)
-                logger.info(f"RWML enabled: model={rwml_cfg.embedding_model}, tau_d={self.rwml_tau_d}, coeff={self.rwml_coeff}")
+                self.rwml_mode = rwml_cfg.get("mode", "teacher_forced")
+                self.rwml_max_new_tokens = rwml_cfg.get("max_new_tokens", 256)
+                self.rwml_micro_batch_size = rwml_cfg.get("micro_batch_size", 16)
+                self.rwml_prompt_template = rwml_cfg.get("prompt_template", "direct")
+                logger.info(
+                    f"RWML enabled: model={rwml_cfg.embedding_model}, "
+                    f"tau_d={self.rwml_tau_d}, coeff={self.rwml_coeff}, "
+                    f"mode={self.rwml_mode}, prompt={self.rwml_prompt_template}"
+                )
 
             self.is_initialized = True
             logger.info("Workers initialized successfully")
@@ -1095,7 +1103,9 @@ class PPOTrainingServerBackend:
                 # ===== DEBUG LOGGING END =====
 
                 # Pass RWML flag so actor returns predicted token IDs
-                if self.rwml_enabled:
+                # (only needed in teacher_forced mode; autoregressive mode
+                # uses a separate generation pass)
+                if self.rwml_enabled and self.rwml_mode == "teacher_forced":
                     batch.meta_info["rwml_enabled"] = True
 
                 old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
@@ -1144,7 +1154,7 @@ class PPOTrainingServerBackend:
                     metrics.update(calculate_debug_metrics(batch))
 
             # 6.5 RWML: Separate world model GRPO update (before policy training)
-            if self.rwml_enabled and "predicted_ids" in batch.batch:
+            if self.rwml_enabled:
                 with marked_timer("rwml_update", timing_raw, color="magenta"):
                     from opentinker.backend_patch.verl.trainer.ppo.world_model_rl import (
                         decode_per_turn_texts, compute_rwml_turn_rewards,
@@ -1153,70 +1163,96 @@ class PPOTrainingServerBackend:
                         compute_turn_boundaries, compute_grpo_per_step_advantage,
                     )
 
-                    predicted_ids = batch.batch.pop("predicted_ids")
                     response_mask = batch.batch["response_mask"]
                     attention_mask = batch.batch["attention_mask"]
                     responses = batch.batch["responses"]
                     turn_boundaries = compute_turn_boundaries(response_mask)
 
-                    # Decode predicted and actual observation texts per turn
-                    predicted_obs = decode_per_turn_texts(
-                        predicted_ids, response_mask, attention_mask,
-                        self.tokenizer, turn_boundaries,
-                    )
-                    actual_obs = decode_per_turn_texts(
-                        responses, response_mask, attention_mask,
-                        self.tokenizer, turn_boundaries,
-                    )
+                    if self.rwml_mode == "autoregressive":
+                        # --- Autoregressive observation prediction ---
+                        batch.meta_info["rwml_max_new_tokens"] = self.rwml_max_new_tokens
+                        batch.meta_info["rwml_micro_batch_size"] = self.rwml_micro_batch_size
+                        batch.meta_info["rwml_prompt_template"] = self.rwml_prompt_template
 
-                    # Compute RWML rewards (binary, per turn)
-                    rwml_rewards, rwml_metrics = compute_rwml_turn_rewards(
-                        predicted_obs, actual_obs, self.rwml_reward_fn, self.rwml_tau_d
-                    )
-                    metrics.update(rwml_metrics)
-                    logger.info(
-                        f"[RWML] mean_sim={rwml_metrics.get('rwml/mean_similarity', 0):.4f}, "
-                        f"mean_reward={rwml_metrics.get('rwml/mean_reward', 0):.4f}, "
-                        f"valid_pairs={rwml_metrics.get('rwml/num_valid_pairs', 0)}"
-                    )
+                        rwml_output = self.actor_rollout_wg.predict_observations(batch)
 
-                    # Compute RWML advantages via GRPO per-step (separate from policy)
-                    norm_adv = self.config.algorithm.get("norm_adv_by_std_in_grpo", True)
-                    rwml_advantages, _ = compute_grpo_per_step_advantage(
-                        token_level_rewards=torch.zeros_like(response_mask.float()),
-                        response_mask=response_mask,
-                        index=batch.non_tensor_batch["uid"],
-                        turn_scores=rwml_rewards,
-                        gamma=self.config.algorithm.gamma,
-                        norm_adv_by_std_in_grpo=norm_adv,
-                    )
+                        # Reshape flat predictions → per-sample per-turn lists
+                        batch_size = response_mask.shape[0]
+                        predicted_obs = [[] for _ in range(batch_size)]
+                        for pred_text, s_idx, t_idx in zip(
+                            rwml_output.non_tensor_batch["rwml_predicted_texts"],
+                            rwml_output.non_tensor_batch["rwml_sample_indices"],
+                            rwml_output.non_tensor_batch["rwml_turn_indices"],
+                        ):
+                            # Ensure list is long enough
+                            while len(predicted_obs[int(s_idx)]) <= int(t_idx):
+                                predicted_obs[int(s_idx)].append("")
+                            predicted_obs[int(s_idx)][int(t_idx)] = str(pred_text)
 
-                    # Run separate RWML GRPO actor update
-                    batch.batch["advantages"] = rwml_advantages
-                    batch.meta_info["multi_turn"] = (
-                        self.config.actor_rollout_ref.rollout.multi_turn.enable
-                    )
-                    # If use_kl_loss is enabled (GRPO default), ref_log_prob hasn't
-                    # been computed yet. Use old_log_probs as stand-in so that the KL
-                    # term acts as KL(current || rollout), a mild regulariser.
-                    _rwml_added_ref = False
-                    if "ref_log_prob" not in batch.batch and "old_log_probs" in batch.batch:
-                        batch.batch["ref_log_prob"] = batch.batch["old_log_probs"].clone()
-                        _rwml_added_ref = True
+                        actual_obs = decode_per_turn_texts(
+                            responses, response_mask, attention_mask,
+                            self.tokenizer, turn_boundaries,
+                        )
+                    elif "predicted_ids" in batch.batch:
+                        # --- Teacher-forced mode (backward compat / debug) ---
+                        predicted_ids = batch.batch.pop("predicted_ids")
+                        predicted_obs = decode_per_turn_texts(
+                            predicted_ids, response_mask, attention_mask,
+                            self.tokenizer, turn_boundaries,
+                        )
+                        actual_obs = decode_per_turn_texts(
+                            responses, response_mask, attention_mask,
+                            self.tokenizer, turn_boundaries,
+                        )
+                    else:
+                        predicted_obs = None  # skip RWML this step
 
-                    rwml_actor_output = self.actor_rollout_wg.update_actor(batch)
-                    rwml_actor_metrics = reduce_metrics(
-                        rwml_actor_output.meta_info["metrics"]
-                    )
-                    metrics.update(
-                        {f"rwml/{k}": v for k, v in rwml_actor_metrics.items()}
-                    )
+                    if predicted_obs is not None:
+                        # Compute RWML rewards (binary, per turn)
+                        rwml_rewards, rwml_metrics = compute_rwml_turn_rewards(
+                            predicted_obs, actual_obs, self.rwml_reward_fn, self.rwml_tau_d
+                        )
+                        metrics.update(rwml_metrics)
+                        logger.info(
+                            f"[RWML-{self.rwml_mode}] "
+                            f"mean_sim={rwml_metrics.get('rwml/mean_similarity', 0):.4f}, "
+                            f"mean_reward={rwml_metrics.get('rwml/mean_reward', 0):.4f}, "
+                            f"valid_pairs={rwml_metrics.get('rwml/num_valid_pairs', 0)}"
+                        )
 
-                    # Clean up: remove RWML-specific fields so policy training
-                    # computes its own advantages and ref_log_prob
-                    del batch.batch["advantages"]
-                    if _rwml_added_ref:
-                        del batch.batch["ref_log_prob"]
+                        # Compute RWML advantages via GRPO per-step
+                        norm_adv = self.config.algorithm.get("norm_adv_by_std_in_grpo", True)
+                        rwml_advantages, _ = compute_grpo_per_step_advantage(
+                            token_level_rewards=torch.zeros_like(response_mask.float()),
+                            response_mask=response_mask,
+                            index=batch.non_tensor_batch["uid"],
+                            turn_scores=rwml_rewards,
+                            gamma=self.config.algorithm.gamma,
+                            norm_adv_by_std_in_grpo=norm_adv,
+                        )
+
+                        # Run separate RWML GRPO actor update
+                        batch.batch["advantages"] = rwml_advantages
+                        batch.meta_info["multi_turn"] = (
+                            self.config.actor_rollout_ref.rollout.multi_turn.enable
+                        )
+                        _rwml_added_ref = False
+                        if "ref_log_prob" not in batch.batch and "old_log_probs" in batch.batch:
+                            batch.batch["ref_log_prob"] = batch.batch["old_log_probs"].clone()
+                            _rwml_added_ref = True
+
+                        rwml_actor_output = self.actor_rollout_wg.update_actor(batch)
+                        rwml_actor_metrics = reduce_metrics(
+                            rwml_actor_output.meta_info["metrics"]
+                        )
+                        metrics.update(
+                            {f"rwml/{k}": v for k, v in rwml_actor_metrics.items()}
+                        )
+
+                        # Clean up so policy training computes its own advantages
+                        del batch.batch["advantages"]
+                        if _rwml_added_ref:
+                            del batch.batch["ref_log_prob"]
 
             # 7. Compute ref_log_prob if needed
             if self.use_reference_policy:
