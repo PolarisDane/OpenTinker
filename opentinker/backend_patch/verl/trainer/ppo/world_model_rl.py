@@ -39,22 +39,41 @@ from opentinker.backend_patch.verl.trainer.ppo.per_step_core_algos import (
 )
 
 # ---------------------------------------------------------------------------
-# RWML prediction prompt suffixes (appended to rollout prefix at action boundary)
+# RWML prediction prompt templates (paper Tables A4 / A5)
+#
+# Key design: the prompt contains ONLY the current observation and the action,
+# NOT the full conversation history.  With full history the model trivially
+# recalls previous observations and achieves ~0.97 similarity, providing no
+# useful training signal.  By limiting context to the current state + action,
+# the model must genuinely predict the environment dynamics.
 # ---------------------------------------------------------------------------
 
-# Direct prediction (paper Table A5): model generates observation directly.
-# Ends with the opening tag so the model starts generating content immediately.
-RWML_PREDICTION_SUFFIX = (
-    "\n\nNow predict the immediate next observation after the action above. "
-    "Present your prediction within <next_state> </next_state> tags.\n<next_state>"
+# Direct prediction (paper Table A5) — no reasoning, just predict.
+RWML_DIRECT_TEMPLATE = (
+    "You are an expert agent operating in the ALFRED Embodied Environment.\n\n"
+    "Your current observation is: {current_state}\n"
+    "Potential action: {action}\n\n"
+    "Now, your task is to predict the immediate next observation after "
+    "executing the potential action above.\n"
+    "Directly present your final prediction of the next observation "
+    "within <next_state> </next_state> tags. DO NOT generate anything else.\n"
+    "<next_state>"
 )
 
-# Reasoning variant (paper Table A4): model reasons in <think> tags first.
-RWML_REASONING_SUFFIX = (
-    "\n\nNow predict the immediate next observation after the action above. "
-    "First briefly reason step-by-step about the previous steps and current "
-    "situation within <think> </think> tags, then present the predicted "
-    "observation within <next_state> </next_state> tags.\n<think>"
+# Reasoning variant (paper Table A4) — reason first, then predict.
+RWML_REASONING_TEMPLATE = (
+    "You are an expert agent operating in the ALFRED Embodied Environment.\n\n"
+    "Your current observation is: {current_state}\n"
+    "Potential action: {action}\n\n"
+    "Now, your task is to predict the immediate next observation after "
+    "taking the potential action above.\n"
+    "You should first briefly reason step-by-step about the previous steps "
+    "and current situation — summarize key information you've learned about "
+    "the environment that is relevant to the task. This reflection and "
+    "reasoning process must be enclosed within <think> </think> tags.\n"
+    "Once you're finished your reasoning, you should describe the next "
+    "observation and present them within <next_state> </next_state> tags.\n"
+    "<think>"
 )
 
 _NEXT_STATE_RE = re.compile(
@@ -73,6 +92,19 @@ def extract_next_state(text: str) -> str:
     return text.strip()
 
 
+def _decode_region(
+    token_ids: torch.Tensor,
+    mask: torch.Tensor,
+    tokenizer,
+) -> str:
+    """Decode tokens where *mask* is True, skip_special_tokens."""
+    valid = mask.bool()
+    if valid.sum() == 0:
+        return ""
+    ids = token_ids[valid].cpu().tolist()
+    return tokenizer.decode(ids, skip_special_tokens=True).strip()
+
+
 def build_rwml_prefixes(
     input_ids: torch.Tensor,
     response_mask: torch.Tensor,
@@ -80,18 +112,21 @@ def build_rwml_prefixes(
     tokenizer,
     prompt_template: str = "direct",
 ) -> Dict[str, np.ndarray]:
-    """Construct per-turn prefixes for autoregressive observation prediction.
+    """Construct standalone RWML prediction prompts per (sample, turn).
 
-    For each (sample, turn), the prefix is the original input_ids up to and
-    including the action turn, followed by the tokenized RWML prediction
-    prompt suffix.
+    Following the paper (Table A4/A5), each prompt contains ONLY:
+      - current observation (the env text seen right before the action)
+      - the action itself
+      - a prediction instruction
+    This prevents the model from recalling previous observations verbatim
+    and forces genuine world-model reasoning.
 
     Args:
         input_ids: (batch_size, full_seq_length)
         response_mask: (batch_size, response_length) 1=action, 0=env/pad
         attention_mask: (batch_size, full_seq_length) 1=real, 0=pad
-        tokenizer: tokenizer for encoding the prompt suffix
-        prompt_template: "direct" or "reasoning"
+        tokenizer: tokenizer for encoding the constructed prompt
+        prompt_template: "direct" (Table A5) or "reasoning" (Table A4)
 
     Returns:
         dict with numpy object arrays:
@@ -99,27 +134,60 @@ def build_rwml_prefixes(
           rwml_sample_indices: flat int array of sample indices
           rwml_turn_indices: flat int array of turn indices
     """
-    suffix_text = (
-        RWML_REASONING_SUFFIX if prompt_template == "reasoning"
-        else RWML_PREDICTION_SUFFIX
+    template = (
+        RWML_REASONING_TEMPLATE if prompt_template == "reasoning"
+        else RWML_DIRECT_TEMPLATE
     )
-    suffix_ids = tokenizer.encode(suffix_text, add_special_tokens=False)
 
     resp_len = response_mask.shape[1]
     prompt_len = input_ids.shape[1] - resp_len
+    response_ids = input_ids[:, prompt_len:]          # (B, resp_len)
+    attn_resp = attention_mask[:, -resp_len:]
+    env_mask = attn_resp * (1.0 - response_mask.float())  # 1=env token
 
     turn_boundaries = compute_turn_boundaries(response_mask)
+
+    # Pre-decode initial prompt text per sample (used as current_state for t=0)
+    prompt_texts: List[str] = []
+    for i in range(input_ids.shape[0]):
+        real_len = int(attention_mask[i, :prompt_len].sum().item())
+        ids = input_ids[i, prompt_len - real_len : prompt_len].cpu().tolist()
+        prompt_texts.append(
+            tokenizer.decode(ids, skip_special_tokens=True).strip()
+        )
 
     all_prefix_ids: List[List[int]] = []
     sample_indices: List[int] = []
     turn_indices: List[int] = []
 
     for i in range(input_ids.shape[0]):
-        for t, (start, end) in enumerate(turn_boundaries[i]):
-            # prefix = everything up to (and including) the last action token
-            prefix_end = prompt_len + end
-            prefix = input_ids[i, :prefix_end].cpu().tolist()
-            prefix = prefix + suffix_ids
+        boundaries = turn_boundaries[i]
+        for t, (start, end) in enumerate(boundaries):
+            # --- current_state: observation BEFORE this action turn ---
+            if t == 0:
+                # First turn: current state is the initial prompt/observation
+                current_state = prompt_texts[i]
+            else:
+                # Observation region between previous action end and this
+                # action start: [prev_end, start)
+                prev_end = boundaries[t - 1][1]
+                obs_region_ids = response_ids[i, prev_end:start]
+                obs_region_mask = env_mask[i, prev_end:start]
+                current_state = _decode_region(
+                    obs_region_ids, obs_region_mask, tokenizer
+                )
+
+            # --- action: decoded text of the action turn tokens ---
+            action_ids = response_ids[i, start:end]
+            action_mask = response_mask[i, start:end]
+            action_text = _decode_region(action_ids, action_mask, tokenizer)
+
+            # --- Construct standalone prompt (no full history) ---
+            prompt_text = template.format(
+                current_state=current_state,
+                action=action_text,
+            )
+            prefix = tokenizer.encode(prompt_text, add_special_tokens=True)
             all_prefix_ids.append(prefix)
             sample_indices.append(i)
             turn_indices.append(t)
