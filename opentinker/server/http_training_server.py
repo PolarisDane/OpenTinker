@@ -1130,7 +1130,7 @@ class PPOTrainingServerBackend:
                 # ===== DEBUG LOGGING END =====
 
                 metrics.update(old_log_prob_metrics)
-                _wmc_erc_entropys = entropys  # Preserve for WMC-ERC before pop
+                _wmc_erc_entropys = entropys.detach()  # Preserve for WMC-ERC before pop (detach to avoid graph retention)
                 old_log_prob.batch.pop("entropys")
                 batch = batch.union(old_log_prob)
                 logger.info(

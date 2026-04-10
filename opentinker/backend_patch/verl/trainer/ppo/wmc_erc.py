@@ -250,8 +250,12 @@ def apply_wmc_erc(
     clip_positive_only = wmc_erc_config.get("clip_positive_only", False) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'clip_positive_only', False)
     inverse_sft_mask = wmc_erc_config.get("inverse_sft_mask", False) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'inverse_sft_mask', False)
 
-    response_mask = batch.batch["response_mask"]
-    old_log_probs = batch.batch["old_log_probs"]
+    # Detach all input tensors — WMC-ERC only computes statistics and masks,
+    # it never needs to backpropagate gradients. Keeping the computation graph
+    # alive causes CUDA memory fragmentation that leads to OOM after ~300 steps.
+    response_mask = batch.batch["response_mask"].detach()
+    old_log_probs = batch.batch["old_log_probs"].detach()
+    entropys = entropys.detach()
     advantages = batch.batch["advantages"]
     response_length = advantages.shape[1]
     attention_mask = batch.batch["attention_mask"]
@@ -260,13 +264,17 @@ def apply_wmc_erc(
     # 1. Turn boundaries
     turn_boundaries = compute_turn_boundaries(response_mask)
 
-    # 2. Compute S_* and H_WM per turn
-    s_star = compute_s_star(old_log_probs, entropys, response_mask, turn_boundaries)
-    h_wm = compute_h_wm(entropys, response_mask, attention_mask_response, turn_boundaries)
+    # All computation below is pure statistics / masking — no gradients needed.
+    # Using no_grad prevents computation graph creation that causes CUDA memory
+    # fragmentation and OOM after ~300 steps.
+    with torch.no_grad():
+        # 2. Compute S_* and H_WM per turn
+        s_star = compute_s_star(old_log_probs, entropys, response_mask, turn_boundaries)
+        h_wm = compute_h_wm(entropys, response_mask, attention_mask_response, turn_boundaries)
 
-    # Calculate batch statistics
-    all_s = [s.item() for turns in s_star for s in turns]
-    all_h = [h.item() for turns in h_wm for h in turns]
+        # Calculate batch statistics
+        all_s = [s.item() for turns in s_star for s in turns]
+        all_h = [h.item() for turns in h_wm for h in turns]
 
     if not all_s:
         return batch, {}
@@ -274,10 +282,10 @@ def apply_wmc_erc(
     batch_s_bar = np.mean(all_s)
     batch_s_std = np.std(all_s) + 1e-8
     batch_h_bar = np.mean(all_h) + 1e-8
-    
+
     # Update global statistics
     momentum = wmc_erc_config.get("momentum", 0.9) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'momentum', 0.9)
-    if len(running_stats.keys()) == 0:
+    if "s_bar" not in running_stats:
         running_stats["s_bar"] = batch_s_bar
         running_stats["s_std"] = batch_s_std
         running_stats["h_bar"] = batch_h_bar
@@ -301,7 +309,7 @@ def apply_wmc_erc(
     mu_exp = float(wmc_erc_config.get("mu_exp", 2.0) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'mu_exp', 2.0))
     eta_wm = float(wmc_erc_config.get("eta_wm", 1.0) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'eta_wm', 1.0))
     lambda_wm = float(wmc_erc_config.get("lambda_wm", 1.0) if hasattr(wmc_erc_config, 'get') else getattr(wmc_erc_config, 'lambda_wm', 1.0))
-    
+
     mask = compute_dynamic_mask(
         s_star, h_wm, mu_base, mu_exp, eta_wm, lambda_wm,
         s_bar=use_s_bar,
@@ -344,22 +352,23 @@ def apply_wmc_erc(
     if inverse_sft_mask:
         batch.batch["sft_weights"] = sft_weights
 
-    # 6. Metrics
+    # 6. Metrics (all under no_grad — purely diagnostic)
     all_m = [m for turns in mask for m in turns]
-    
+
     num_collapsing_violated = 0
     num_exploration_violated = 0
     for i in range(len(s_star)):
         for t in range(len(s_star[i])):
             if mask[i][t] < 1.0:
-                if s_star[i][t].item() > use_s_bar:
+                if s_star[i][t].detach().item() > use_s_bar:
                     num_collapsing_violated += 1
                 else:
                     num_exploration_violated += 1
 
-    env_mask = attention_mask_response * (1.0 - response_mask)
-    env_count = env_mask.sum()
-    wm_nll = (-(old_log_probs * env_mask).sum() / (env_count + 1e-8)).item() if env_count > 0 else 0.0
+    with torch.no_grad():
+        env_mask = attention_mask_response * (1.0 - response_mask)
+        env_count = env_mask.sum()
+        wm_nll = (-(old_log_probs * env_mask).sum() / (env_count + 1e-8)).item() if env_count > 0 else 0.0
 
     metrics = {
         "wmc_erc/batch_s_bar": float(batch_s_bar),
