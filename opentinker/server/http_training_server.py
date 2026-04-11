@@ -752,8 +752,9 @@ class PPOTrainingServerBackend:
                 self.rwml_tau_d = rwml_cfg.get("tau_d", 0.2)
                 self.rwml_coeff = rwml_cfg.get("coeff", 1.0)
                 self.rwml_mode = rwml_cfg.get("mode", "teacher_forced")
-                self.rwml_max_new_tokens = rwml_cfg.get("max_new_tokens", 256)
-                self.rwml_micro_batch_size = rwml_cfg.get("micro_batch_size", 16)
+                self.rwml_max_new_tokens = rwml_cfg.get("max_new_tokens", 128)
+                self.rwml_micro_batch_size = rwml_cfg.get("micro_batch_size", 4)
+                self.rwml_max_prefix_len = rwml_cfg.get("max_prefix_len", 2048)
                 self.rwml_prompt_template = rwml_cfg.get("prompt_template", "direct")
                 logger.info(
                     f"RWML enabled: model={rwml_cfg.embedding_model}, "
@@ -1172,6 +1173,7 @@ class PPOTrainingServerBackend:
                         # --- Autoregressive observation prediction ---
                         batch.meta_info["rwml_max_new_tokens"] = self.rwml_max_new_tokens
                         batch.meta_info["rwml_micro_batch_size"] = self.rwml_micro_batch_size
+                        batch.meta_info["rwml_max_prefix_len"] = self.rwml_max_prefix_len
                         batch.meta_info["rwml_prompt_template"] = self.rwml_prompt_template
 
                         rwml_output = self.actor_rollout_wg.predict_observations(batch)

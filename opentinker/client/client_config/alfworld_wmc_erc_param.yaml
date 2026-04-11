@@ -99,8 +99,9 @@ rwml:
   embedding_model: "Alibaba-NLP/gte-large-en-v1.5"
   tau_d: 0.2
   coeff: 1.0
-  max_new_tokens: 256
-  micro_batch_size: 16
+  max_new_tokens: 128
+  micro_batch_size: 4
+  max_prefix_len: 2048
   prompt_template: "direct"
 
 # Interaction configuration
